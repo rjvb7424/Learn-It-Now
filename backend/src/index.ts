@@ -30,3 +30,11 @@ setGlobalOptions({ maxInstances: 10 });
 //   logger.info("Hello logs!", {structuredData: true});
 //   response.send("Hello from Firebase!");
 // });
+
+import * as functions from "firebase-functions";
+import Stripe from "stripe";
+
+const stripe = new Stripe(functions.config().stripe.secret, {
+  apiVersion: "2025-06-30.basil",
+});
+
