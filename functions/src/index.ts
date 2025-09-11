@@ -1,30 +1,37 @@
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-import corsLib from "cors";
+import { onRequest } from "firebase-functions/v2/https";
+import { defineSecret, defineString } from "firebase-functions/params";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 import Stripe from "stripe";
 
-admin.initializeApp();
+initializeApp();
+const db = getFirestore();
 
-const cors = corsLib({ origin: true });
+// Params / secrets
+const STRIPE_SECRET = defineSecret("STRIPE_SECRET");
+// Use a param for base URL too (you can also keep this as a secret if you prefer)
+const APP_BASE_URL = defineString("APP_BASE_URL");
 
-const STRIPE_SECRET = process.env.STRIPE_SECRET;
-// change to process.env.APP_BASE_URL during deployment
-const APP_BASE_URL = "http://localhost:5173";
-
-if (!STRIPE_SECRET) {
-  console.warn("Missing functions config: stripe.secret_key");
-}
-if (!APP_BASE_URL) {
-  console.warn("Missing functions config: app.base_url");
-}
-
-// No apiVersion to avoid TS union mismatch headaches
-const stripe = new Stripe(STRIPE_SECRET || "");
-
+// Types
 type CreateAccountBody = { uid?: string; email?: string };
+type OnboardLinkBody = { accountId?: string };
 
-export const createConnectedAccount = functions.https.onRequest(async (req, res) => {
-  cors(req, res, async () => {
+// Lazy Stripe client (don’t instantiate at module load)
+function getStripe(): Stripe {
+  const key = STRIPE_SECRET.value();
+  if (!key) throw new Error("Server not configured: STRIPE_SECRET missing");
+  return new Stripe(key);
+}
+
+// POST /createConnectedAccount
+export const createConnectedAccount = onRequest(
+  {
+    // v2 has built-in CORS; change to your domain(s) when you go prod
+    cors: true,
+    secrets: [STRIPE_SECRET],
+    region: "us-central1", // or your preferred region
+  },
+  async (req, res) => {
     try {
       if (req.method !== "POST") {
         res.status(405).json({ error: "Method not allowed" });
@@ -36,12 +43,10 @@ export const createConnectedAccount = functions.https.onRequest(async (req, res)
         res.status(400).json({ error: "uid required" });
         return;
       }
-      if (!STRIPE_SECRET) {
-        res.status(500).json({ error: "Server not configured: stripe.secret_key missing" });
-        return;
-      }
 
-      const userRef = admin.firestore().collection("users").doc(uid);
+      const stripe = getStripe();
+
+      const userRef = db.collection("users").doc(uid);
       const snap = await userRef.get();
       let accountId = snap.get("stripeAccountId") as string | undefined;
 
@@ -58,18 +63,23 @@ export const createConnectedAccount = functions.https.onRequest(async (req, res)
       }
 
       res.json({ accountId });
-    } catch (err: unknown) {
+    } catch (err) {
       console.error("createConnectedAccount error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      res.status(500).json({ error: errorMessage });
+      res
+        .status(500)
+        .json({ error: err instanceof Error ? err.message : "Unknown error" });
     }
-  });
-});
+  }
+);
 
-type OnboardLinkBody = { accountId?: string };
-
-export const createOnboardingLink = functions.https.onRequest(async (req, res) => {
-  cors(req, res, async () => {
+// POST /createOnboardingLink
+export const createOnboardingLink = onRequest(
+  {
+    cors: true,
+    secrets: [STRIPE_SECRET],
+    region: "us-central1",
+  },
+  async (req, res) => {
     try {
       if (req.method !== "POST") {
         res.status(405).json({ error: "Method not allowed" });
@@ -81,27 +91,30 @@ export const createOnboardingLink = functions.https.onRequest(async (req, res) =
         res.status(400).json({ error: "accountId required" });
         return;
       }
-      if (!STRIPE_SECRET) {
-        res.status(500).json({ error: "Server not configured: stripe.secret_key missing" });
-        return;
-      }
-      if (!APP_BASE_URL) {
-        res.status(500).json({ error: "Server not configured: app.base_url missing" });
+
+      const baseUrl = APP_BASE_URL.value();
+      if (!baseUrl) {
+        res
+          .status(500)
+          .json({ error: "Server not configured: APP_BASE_URL missing" });
         return;
       }
 
+      const stripe = getStripe();
+
       const link = await stripe.accountLinks.create({
         account: accountId,
-        refresh_url: `${APP_BASE_URL}/onboarding/refresh`,
-        return_url: `${APP_BASE_URL}/onboarding/complete`,
+        refresh_url: `${baseUrl}/onboarding/refresh`,
+        return_url: `${baseUrl}/onboarding/complete`,
         type: "account_onboarding",
       });
 
       res.json({ url: link.url });
-    } catch (err: unknown) {
+    } catch (err) {
       console.error("createOnboardingLink error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      res.status(500).json({ error: errorMessage });
+      res
+        .status(500)
+        .json({ error: err instanceof Error ? err.message : "Unknown error" });
     }
-  });
-});
+  }
+);
