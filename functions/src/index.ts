@@ -8,9 +8,7 @@ const STRIPE_SECRET = defineSecret("STRIPE_SECRET");
 
 // Helper to build a Stripe client using the Stripe secret key
 function makeStripe() {
-  return new Stripe(STRIPE_SECRET.value(), {
-    apiVersion: "2025-08-27.basil",
-  });
+  return new Stripe(STRIPE_SECRET.value());
 }
 
 /**
@@ -18,7 +16,7 @@ function makeStripe() {
  * Creates a Stripe Express account and returns the account ID.
  */
 export const createAccount = onRequest(
-  { secrets: [STRIPE_SECRET] },
+  { secrets: [STRIPE_SECRET], cors: ["http://localhost:5173"] },
   async (req, res) => {
     try {
       const stripe = makeStripe();
@@ -39,7 +37,7 @@ export const createAccount = onRequest(
  * Creates an onboarding link for the given account.
  */
 export const createAccountLink = onRequest(
-  { secrets: [STRIPE_SECRET] }, // only Stripe secret is needed
+  { secrets: [STRIPE_SECRET], cors: ["http://localhost:5173"] }, // only Stripe secret is needed
   async (req, res) => {
     try {
       const stripe = makeStripe();
@@ -55,7 +53,7 @@ export const createAccountLink = onRequest(
         account: accountId,
         // Hardcoded dev URLs for now
         return_url: `http://localhost:5173/return/${accountId}`,
-        refresh_url: `http://localhost:5173/return/${accountId}`,
+        refresh_url: `http://localhost:5173/refresh_url/${accountId}`,
         type: "account_onboarding",
       });
 
