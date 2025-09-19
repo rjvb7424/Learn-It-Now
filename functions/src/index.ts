@@ -53,7 +53,7 @@ export const createAccountLink = onRequest(
         account: accountId,
         // Hardcoded dev URLs for now
         return_url: `http://localhost:5173/return/${accountId}`,
-        refresh_url: `http://localhost:5173/refresh_url/${accountId}`,
+        refresh_url: `http://localhost:5173/refresh/${accountId}`,
         type: "account_onboarding",
       });
 
