@@ -1,12 +1,17 @@
-// Import the functions you need from the SDKs you need
+// src/lib/firebase.ts
 import { initializeApp } from "firebase/app";
-// import { getAnalytics } from "firebase/analytics";
-import { getFunctions, httpsCallable } from 'firebase/functions';
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import {
+  getAuth,
+  setPersistence,
+  browserLocalPersistence,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+  onAuthStateChanged,
+  signOut as fbSignOut,
+  type User,
+} from "firebase/auth";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBGwG3OhJKGtmwQ2VV3tXXotpGIoSWuyFE",
   authDomain: "learn-it-now-69e25.firebaseapp.com",
@@ -17,8 +22,33 @@ const firebaseConfig = {
   measurementId: "G-71M2M13SL2"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-// const analytics = getAnalytics(app);
-export const functions = getFunctions(app);
-export const createStripeAccount = httpsCallable(functions, 'createStripeAccount');
+export const auth = getAuth(app);
+
+// Persist across tabs & reloads (“remembered”)
+await setPersistence(auth, browserLocalPersistence);
+
+export const provider = new GoogleAuthProvider();
+// Optional: request basic profile & email (default scopes are fine)
+// provider.addScope("profile"); provider.addScope("email");
+
+export async function signInWithGoogleRedirect() {
+  await signInWithRedirect(auth, provider);
+}
+
+export async function handleRedirectResult() {
+  // Call once on app start; no-op if user already cached
+  try {
+    await getRedirectResult(auth);
+  } catch (e) {
+    console.error("Google redirect error", e);
+  }
+}
+
+export function onUserChanged(cb: (user: User | null) => void) {
+  return onAuthStateChanged(auth, cb);
+}
+
+export async function signOut() {
+  await fbSignOut(auth);
+}
