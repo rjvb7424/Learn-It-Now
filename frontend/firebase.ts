@@ -1,16 +1,5 @@
-// src/lib/firebase.ts
 import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  setPersistence,
-  browserLocalPersistence,
-  GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
-  onAuthStateChanged,
-  signOut as fbSignOut,
-  type User,
-} from "firebase/auth";
+import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBGwG3OhJKGtmwQ2VV3tXXotpGIoSWuyFE",
@@ -23,32 +12,4 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-
-// Persist across tabs & reloads (“remembered”)
-await setPersistence(auth, browserLocalPersistence);
-
-export const provider = new GoogleAuthProvider();
-// Optional: request basic profile & email (default scopes are fine)
-// provider.addScope("profile"); provider.addScope("email");
-
-export async function signInWithGoogleRedirect() {
-  await signInWithRedirect(auth, provider);
-}
-
-export async function handleRedirectResult() {
-  // Call once on app start; no-op if user already cached
-  try {
-    await getRedirectResult(auth);
-  } catch (e) {
-    console.error("Google redirect error", e);
-  }
-}
-
-export function onUserChanged(cb: (user: User | null) => void) {
-  return onAuthStateChanged(auth, cb);
-}
-
-export async function signOut() {
-  await fbSignOut(auth);
-}
+const analytics = getAnalytics(app);
