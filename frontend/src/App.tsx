@@ -1,4 +1,5 @@
 // src/main.tsx (or your router file)
+/*
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import StripeOnboardingTest from "./StripeOnboardingTest";
 
@@ -15,4 +16,12 @@ export default function App() {
       </Routes>
     </BrowserRouter>
   );
+}
+*/
+
+// frontend/src/App.tsx
+import HomePage from "./homepage/HomePage";
+
+export default function App() {
+  return <HomePage />;
 }

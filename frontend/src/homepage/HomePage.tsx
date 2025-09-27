@@ -1,7 +1,12 @@
+import { Container } from "@mui/material";
 import CourseCard from "./CourseCard";
+import SignInButton from "./SignInButton";
 
 export default function HomePage() {
   return (
-    <CourseCard />
+    <Container>
+      <CourseCard />
+      <SignInButton />
+    </Container>
   );
 }
