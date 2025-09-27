@@ -1,28 +1,39 @@
-// external imports
-import React from "react";
-import { Button } from "@mui/material";
-import { getAuth, signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
+// src/components/SignInButton.tsx
+import Button from "@mui/material/Button";
+import GoogleIcon from "@mui/icons-material/Google";
+import { signInWithGoogle } from "../library/signIn";
 
-// icon imports
-import { Google as GoogleIcon } from "@mui/icons-material";
+type SignInButtonProps = {
+  onError?: (error: unknown) => void;
+  onSuccess?: () => void;
+  fullWidth?: boolean;
+};
 
-const SignInButton: React.FC = () => {
-    const handleSignIn = () => {
-    const auth = getAuth();
-    const provider = new GoogleAuthProvider();
-    signInWithRedirect(auth, provider);
+export default function SignInButton({
+  onError,
+  onSuccess,
+  fullWidth,
+}: SignInButtonProps) {
+  const handleClick = async () => {
+    try {
+      await signInWithGoogle();
+      onSuccess?.();
+    } catch (err) {
+      onError?.(err);
+      // Fallback simple alert if no handler provided:
+      if (!onError) alert("Sign-in failed. Check console for details.");
+      console.error(err);
+    }
   };
 
   return (
     <Button
       variant="contained"
-      color="primary"
       startIcon={<GoogleIcon />}
-      onClick={handleSignIn}
+      onClick={handleClick}
+      fullWidth={fullWidth}
     >
       Sign in with Google
     </Button>
   );
-};
-
-export default SignInButton;
+}
