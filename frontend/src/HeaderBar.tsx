@@ -10,7 +10,7 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Box from "@mui/material/Box";
 import { useAuth } from "./authentication/AuthContext";
-import { signInWithGoogleRedirect, signOut } from "../firebase";
+import { signInWithGoogleRedirect, signOut } from "./firebase/firebase";
 
 export default function HeaderBar() {
   const { user, loading } = useAuth();
