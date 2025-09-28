@@ -22,10 +22,10 @@ export default function App() {
 // frontend/src/App.tsx
 // src/App.tsx
 import HomePage from "./homepage/HomePage";
-// ...other imports
+import CreatePage from "./createpage/CreatePage";
 
 export default function App() {
   return (
-    <HomePage />
+    <CreatePage />
   );
 }
