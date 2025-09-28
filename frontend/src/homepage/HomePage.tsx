@@ -1,6 +1,6 @@
 // External imports
 import { useState, useEffect } from "react";
-import { Button, Container, Avatar, IconButton } from "@mui/material";
+import { Button, Container, Avatar, IconButton, Box } from "@mui/material";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 
 // External types
@@ -9,6 +9,7 @@ import type { User } from "firebase/auth";
 // Internal imports
 import { auth } from "../firebase/firebase";
 import { SignIn } from "../firebase/SignIn";
+import CustomAppBar from "./CustomAppBar";
 
 export default function HomePage() {
   const [loading, setLoading] = useState(false);
@@ -39,20 +40,23 @@ export default function HomePage() {
   };
 
   return (
-    <Container>
-      {user ? (
-        <IconButton onClick={handleSignOut}>
-          <Avatar src={user.photoURL ?? undefined} alt={user.displayName ?? "User"} />
-        </IconButton>
-      ) : (
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSignIn}
-          disabled={loading}>
-          {loading ? "Signing in..." : "Sign In"}
-        </Button>
-      )}  
-    </Container>
+    <Box>
+      <CustomAppBar />
+      <Container>
+        {user ? (
+          <IconButton onClick={handleSignOut}>
+            <Avatar src={user.photoURL ?? undefined} alt={user.displayName ?? "User"} />
+          </IconButton>
+        ) : (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSignIn}
+            disabled={loading}>
+            {loading ? "Signing in..." : "Sign In"}
+          </Button>
+        )}  
+      </Container>
+    </Box>
   );
 }
