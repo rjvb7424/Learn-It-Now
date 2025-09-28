@@ -1,8 +1,8 @@
-// external imports
+// External imports
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
-// internal imports
+// Internal imports
 import { auth, db } from "./firebase";
 
 const googleProvider = new GoogleAuthProvider();
