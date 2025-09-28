@@ -1,10 +1,12 @@
 // external imports
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 // internal imports
 import { auth, db } from "./firebase";
-import { googleProvider } from "./firebase";
+
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 // Signs in the user with Google, creating a profile in Firestore if needed.
 export async function SignIn(): Promise<void> {
@@ -17,7 +19,6 @@ export async function SignIn(): Promise<void> {
         if (snap.exists()) return;
         // Create a new user in Firestore.
         await setDoc(userRef, {
-            uid: user.uid,
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
