@@ -130,7 +130,6 @@ export default function CreatePage() {
               onChange={limitedChange(setTitle, LIMITS.title)}
               inputProps={{ maxLength: LIMITS.title }}
               helperText={`${title.length}/${LIMITS.title}`}
-              error={Boolean(errors.title)}
             />
             <TextField
               label="Description (Required)"
@@ -141,12 +140,10 @@ export default function CreatePage() {
               onChange={limitedChange(setDescription, LIMITS.description)}
               inputProps={{ maxLength: LIMITS.description }}
               helperText={`${description.length}/${LIMITS.description}`}
-              error={Boolean(errors.description)}
             />
           </Stack>
         </CardContent>
       </Card>
-
       {/* Course Content */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -168,27 +165,27 @@ export default function CreatePage() {
               Add Lesson ({lessons.length}/{LIMITS.maxLessons})
             </Button>
           </Stack>
-
+          {/* Help Text For Lessons */}
           {errors.lessons && (
-            <Typography color="error" sx={{ mb: 1 }}>
-              {errors.lessons}
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+              Add at least one lesson (Required)
             </Typography>
           )}
-
+          {/* Lesson Header */}
           <Stack spacing={2}>
             {lessons.map((lesson, idx) => (
               <Card key={lesson.id} variant="outlined">
                 <CardContent>
                   <Stack direction="row" justifyContent="space-between" mb={1}>
-                    <Typography variant="subtitle1">Lesson {idx + 1}</Typography>
+                    <Typography variant="subtitle1">Lesson #{idx + 1}</Typography>
                     <IconButton aria-label="remove lesson" onClick={() => removeLesson(lesson.id)}>
                       <DeleteOutlineIcon />
                     </IconButton>
                   </Stack>
-
+                  {/* Lesson Fields */}
                   <Stack spacing={2}>
                     <TextField
-                      label="Lesson Title"
+                      label="Lesson Title (Required)"
                       fullWidth
                       value={lesson.title}
                       onChange={(e) =>
@@ -202,10 +199,9 @@ export default function CreatePage() {
                       }
                       inputProps={{ maxLength: LIMITS.lessonTitle }}
                       helperText={`${lesson.title.length}/${LIMITS.lessonTitle}`}
-                      error={Boolean(errors.lessonFields)}
                     />
                     <TextField
-                      label="Lesson Content"
+                      label="Lesson Content (Required)"
                       fullWidth
                       multiline
                       minRows={3}
@@ -221,7 +217,6 @@ export default function CreatePage() {
                       }
                       inputProps={{ maxLength: LIMITS.lessonContent }}
                       helperText={`${lesson.content.length}/${LIMITS.lessonContent}`}
-                      error={Boolean(errors.lessonFields)}
                     />
                   </Stack>
                 </CardContent>
@@ -230,14 +225,13 @@ export default function CreatePage() {
           </Stack>
         </CardContent>
       </Card>
-
-      {/* PRICE + PUBLISH */}
+      {/* Price and Publish Header */}
       <Card>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Pricing & Publish
           </Typography>
-
+          {/* Price Section */}
           <Stack spacing={2}>
             <TextField
               label={`Price (0–${LIMITS.maxPrice})`}
@@ -246,7 +240,6 @@ export default function CreatePage() {
               onChange={onPriceChange}
               type="number"
               inputProps={{ min: 0, max: LIMITS.maxPrice, step: 1 }}
-              error={Boolean(errors.price)}
               helperText={
                 errors.price
                   ? errors.price
@@ -255,15 +248,15 @@ export default function CreatePage() {
                   : " "
               }
             />
-
+            {/* Publish Section */}
             <Divider />
-
+            {/* Help Text For Publish */}
             {errors.lessonFields && (
               <Typography color="error" sx={{ mb: 1 }}>
                 {errors.lessonFields}
               </Typography>
             )}
-
+            {/* Publish and Reset Buttons */}
             <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
               <Button variant="contained" size="large" onClick={onPublish} disabled={!canPublish}>
                 Publish Course
