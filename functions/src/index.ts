@@ -20,7 +20,7 @@ export const createAccount = onRequest(
   async (req, res) => {
     try {
       const stripe = makeStripe();
-      // create an Express account
+      // Create an Express account
       const account = await stripe.accounts.create({ type: "express" });
       res.json({ accountId: account.id });
     } catch (err) {
@@ -37,13 +37,13 @@ export const createAccount = onRequest(
  * Creates an onboarding link for the given account.
  */
 export const createAccountLink = onRequest(
-  { secrets: [STRIPE_SECRET], cors: ["http://localhost:5173"] }, // only Stripe secret is needed
+  { secrets: [STRIPE_SECRET], cors: ["http://localhost:5173"] },
   async (req, res) => {
     try {
       const stripe = makeStripe();
-      // get accountId from the request body
+      // Get accountId from the request body
       const { accountId } = (req.body ?? {}) as { accountId?: string };
-      // if no accountId is provided, return an error
+      // If no accountId is provided, return an error
       if (!accountId) {
         res.status(400).json({ error: "Missing required field: accountId" });
         return;
@@ -65,3 +65,4 @@ export const createAccountLink = onRequest(
     }
   }
 );
+
