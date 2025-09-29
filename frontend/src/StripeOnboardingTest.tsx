@@ -1,7 +1,6 @@
 // src/StripeOnboardingTest.tsx
 import * as React from "react";
 import { Button, Stack, TextField, Alert } from "@mui/material";
-import HeaderBar from "./HeaderBar";
 
 const CREATE_ACCOUNT_URL = "https://createaccount-5rf4ii6yvq-uc.a.run.app";
 const CREATE_ACCOUNT_LINK_URL = "https://createaccountlink-5rf4ii6yvq-uc.a.run.app";
@@ -53,7 +52,6 @@ export default function StripeOnboardingTest() {
   return (
     <Stack spacing={2} sx={{ p: 3, maxWidth: 600 }}>
       {error && <Alert severity="error">{error}</Alert>}
-      <HeaderBar />
       <Button variant="contained" onClick={createAccount} disabled={loading}>
         Create Account
       </Button>

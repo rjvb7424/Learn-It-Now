@@ -1,5 +1,4 @@
 // src/main.tsx (or your router file)
-/*
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import StripeOnboardingTest from "./StripeOnboardingTest";
 
@@ -15,17 +14,5 @@ export default function App() {
         <Route path="/refresh/:accountId" element={<RefreshPage />} />
       </Routes>
     </BrowserRouter>
-  );
-}
-*/
-
-// frontend/src/App.tsx
-// src/App.tsx
-import HomePage from "./homepage/HomePage";
-import CreatePage from "./createpage/CreatePage";
-
-export default function App() {
-  return (
-    <CreatePage />
   );
 }
