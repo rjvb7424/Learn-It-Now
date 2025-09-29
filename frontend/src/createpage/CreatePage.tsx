@@ -1,20 +1,12 @@
-// src/pages/CreatePage.tsx
+// External imports
 import { useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Container,
-  Divider,
-  IconButton,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Card, CardContent, Container, Divider, IconButton, Stack, TextField, Typography, } from "@mui/material";
+
+// Icon imports
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddIcon from "@mui/icons-material/Add";
+import CustomAppBar from "../homepage/CustomAppBar";
 
 type Lesson = {
   id: string;
@@ -54,8 +46,9 @@ export default function CreatePage() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [price, setPrice] = useState<string>("");
 
+  // Function to add a new lesson
   const addLesson = (): void => {
-    if (lessons.length >= LIMITS.maxLessons) return;
+    if (lessons.length >= 5) return;
     setLessons((ls) => [...ls, { id: crypto.randomUUID(), title: "", content: "" }]);
   };
 
@@ -115,20 +108,23 @@ export default function CreatePage() {
     };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Box>
+      {/* App Bar */}
+      <CustomAppBar />
+      <Container>
+      {/* Page Title */}
       <Typography variant="h4" sx={{ mb: 2 }}>
         Create Course
       </Typography>
-
-      {/* BASIC DETAILS */}
+      {/* Course Details */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 1 }}>
-            Basic Details
+            Details
           </Typography>
           <Stack spacing={2}>
             <TextField
-              label="Title"
+              label="Title (Required)"
               fullWidth
               value={title}
               onChange={limitedChange(setTitle, LIMITS.title)}
@@ -137,7 +133,7 @@ export default function CreatePage() {
               error={Boolean(errors.title)}
             />
             <TextField
-              label="Description"
+              label="Description (Required)"
               fullWidth
               multiline
               minRows={3}
@@ -151,7 +147,7 @@ export default function CreatePage() {
         </CardContent>
       </Card>
 
-      {/* COURSE CONTENT */}
+      {/* Course Content */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Stack
@@ -160,7 +156,9 @@ export default function CreatePage() {
             justifyContent="space-between"
             sx={{ mb: 1 }}
           >
-            <Typography variant="h6">Course Content</Typography>
+            <Typography variant="h6">
+              Course Content
+            </Typography>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -204,6 +202,7 @@ export default function CreatePage() {
                       }
                       inputProps={{ maxLength: LIMITS.lessonTitle }}
                       helperText={`${lesson.title.length}/${LIMITS.lessonTitle}`}
+                      error={Boolean(errors.lessonFields)}
                     />
                     <TextField
                       label="Lesson Content"
@@ -222,6 +221,7 @@ export default function CreatePage() {
                       }
                       inputProps={{ maxLength: LIMITS.lessonContent }}
                       helperText={`${lesson.content.length}/${LIMITS.lessonContent}`}
+                      error={Boolean(errors.lessonFields)}
                     />
                   </Stack>
                 </CardContent>
@@ -285,5 +285,6 @@ export default function CreatePage() {
         </CardContent>
       </Card>
     </Container>
+    </Box>
   );
 }
