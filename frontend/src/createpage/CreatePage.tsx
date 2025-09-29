@@ -1,7 +1,7 @@
 // External imports
 import { useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
-import { Box, Button, Card, CardContent, Container, Divider, IconButton, Stack, TextField, Typography, } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Container, Divider, IconButton, Stack, TextField, Typography, } from "@mui/material";
 
 // Icon imports
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -83,6 +83,16 @@ export default function CreatePage() {
   }, [title, description, lessons, price]);
 
   const canPublish = Object.keys(errors).length === 0;
+
+  const errorList = useMemo(() => {
+  const msgs: string[] = [];
+  if (errors.title) msgs.push(errors.title);
+  if (errors.description) msgs.push(errors.description);
+  if (errors.lessons) msgs.push(errors.lessons);
+  if (errors.lessonFields) msgs.push(errors.lessonFields);
+  if (errors.price) msgs.push(errors.price);
+  return msgs;
+}, [errors]);
 
   const onPublish = (): void => {
     const payload = {
@@ -251,10 +261,10 @@ export default function CreatePage() {
             {/* Publish Section */}
             <Divider />
             {/* Help Text For Publish */}
-            {errors.lessonFields && (
-              <Typography color="error" sx={{ mb: 1 }}>
-                {errors.lessonFields}
-              </Typography>
+            {errorList.length > 0 && (
+              <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
+                {errorList[0]}
+              </Alert>
             )}
             {/* Publish and Reset Buttons */}
             <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
