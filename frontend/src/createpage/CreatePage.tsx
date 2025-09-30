@@ -6,7 +6,7 @@ import { Alert, Box, Button, Card, CardContent, Container, Divider, IconButton, 
 // Icon imports
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddIcon from "@mui/icons-material/Add";
-import CustomAppBar from "../homepage/CustomAppBar";
+import CustomAppBar from "../components/CustomAppBar";
 
 type Lesson = {
   id: string;
