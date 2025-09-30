@@ -1,8 +1,8 @@
 import { Button, Card, CardContent, Stack, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import LessonItem from "./LessonItem";
-import { LIMITS } from "./Types";
-import type { Lesson } from "./Types";
+import { LIMITS } from "../Types";
+import type { Lesson } from "../Types";
 
 type Props = {
   lessons: Lesson[];

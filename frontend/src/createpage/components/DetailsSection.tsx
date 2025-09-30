@@ -1,6 +1,6 @@
 import { Stack, TextField, Typography, Card, CardContent } from "@mui/material";
 import type { ChangeEvent } from "react";
-import { LIMITS } from "./Types";
+import { LIMITS } from "../Types";
 
 type Props = {
   title: string;

@@ -1,7 +1,7 @@
 import { Card, CardContent, IconButton, Stack, TextField, Typography } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import { LIMITS } from "./Types";
-import type { Lesson } from "./Types";
+import { LIMITS } from "../Types";
+import type { Lesson } from "../Types";
 
 type Props = {
   lesson: Lesson;

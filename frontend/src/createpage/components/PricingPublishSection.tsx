@@ -12,7 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { ChangeEvent } from "react";
-import { LIMITS } from "./Types";
+import { LIMITS } from "../Types";
 
 type Props = {
   isFree: boolean;

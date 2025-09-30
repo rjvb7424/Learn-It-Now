@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Box, Container, Typography } from "@mui/material";
 import CustomAppBar from "../components/CustomAppBar";
-import DetailsSection from "./DetailsSection";
-import ContentSection from "./ContentSection";
-import PricingPublishSection from "./PricingPublishSection";
+import DetailsSection from "./components/DetailsSection";
+import ContentSection from "./components/ContentSection";
+import PricingPublishSection from "./components/PricingPublishSection";
 import type { Lesson } from "./Types";
 import { LIMITS } from "./Types";
 import type { Errors } from "./Types";
