@@ -1,7 +1,7 @@
 // External imports
 import { useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
-import { Alert, Box, Button, Card, CardContent, Container, Divider, IconButton, Stack, TextField, Typography, } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Container, Divider, IconButton, Stack, TextField, Typography, Checkbox, FormControlLabel } from "@mui/material";
 
 // Icon imports
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -44,6 +44,7 @@ export default function CreatePage() {
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [isFree, setIsFree] = useState<boolean>(true);
   const [price, setPrice] = useState<string>("");
 
   // Function to add a new lesson
@@ -64,23 +65,32 @@ export default function CreatePage() {
     setLessons((ls) => ls.filter((l) => l.id !== id));
   };
 
-  const onPriceChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    const cleaned = e.target.value.replace(/[^\d.]/g, "");
-    if (cleaned === "") return setPrice("");
-    const num = Math.min(parseFloat(cleaned), LIMITS.maxPrice);
-    setPrice(Number.isFinite(num) && num >= 0 ? String(num) : "");
-  };
+const onPriceChange = (e: ChangeEvent<HTMLInputElement>): void => {
+  const cleaned = e.target.value.replace(/[^\d.]/g, ""); // keep digits and dot only
+  if (cleaned === "") return setPrice("0");
 
-  const errors: Errors = useMemo(() => {
-    const errs: Errors = {};
-    if (!title.trim()) errs.title = "Title is required.";
-    if (!description.trim()) errs.description = "Description is required.";
-    if (lessons.length === 0) errs.lessons = "Add at least one lesson.";
-    if (lessons.some((l) => !l.title.trim() || !l.content.trim()))
-      errs.lessonFields = "Fill all lesson fields.";
-    if (price === "" || Number(price) < 0) errs.price = "Enter a valid price.";
-    return errs;
-  }, [title, description, lessons, price]);
+  let num = parseFloat(cleaned);
+  if (!Number.isFinite(num) || num < 0) return setPrice("0");
+
+  num = Math.min(num, LIMITS.maxPrice);
+
+  // Limit to 1 decimal place
+  const fixed = Math.floor(num * 10) / 10; 
+  setPrice(fixed.toString());
+};
+
+const errors: Errors = useMemo(() => {
+  const errs: Errors = {};
+  if (!title.trim()) errs.title = "Title is required.";
+  if (!description.trim()) errs.description = "Description is required.";
+  if ( lessons.length === 0 ) errs.lessons = "Add at least one lesson.";
+  if (lessons.some((l) => !l.title.trim() || !l.content.trim()))
+    errs.lessonFields = "Fill all lesson fields.";
+  if (!isFree) {
+    if (price === "" || Number(price) < 0.01) errs.price = `Enter a valid price between 0 and ${LIMITS.maxPrice}€`;
+  }
+  return errs;
+}, [title, description, lessons, price, isFree]);
 
   const canPublish = Object.keys(errors).length === 0;
 
@@ -103,7 +113,8 @@ export default function CreatePage() {
         title: l.title.trim(),
         content: l.content.trim(),
       })),
-      price: Number(price),
+      price: isFree ? 0 : Number(price),
+      isFree,
       publishedAt: new Date().toISOString(),
     };
     console.log("Publishing course:", payload);
@@ -243,24 +254,32 @@ export default function CreatePage() {
           </Typography>
           {/* Price Section */}
           <Stack spacing={2}>
-            <TextField
-              label={`Price (0–${LIMITS.maxPrice})`}
-              fullWidth
-              value={price}
-              onChange={onPriceChange}
-              type="number"
-              inputProps={{ min: 0, max: LIMITS.maxPrice, step: 1 }}
-              helperText={
-                errors.price
-                  ? errors.price
-                  : price !== ""
-                  ? `Set the course price (max ${LIMITS.maxPrice}).`
-                  : " "
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isFree}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsFree(checked);
+                    setPrice("0");
+                  }}
+                />
               }
+              label="Course is free"
             />
-            {/* Publish Section */}
-            <Divider />
+            {!isFree && (
+              <TextField
+                label={`Price in EUR (Required)`}
+                fullWidth
+                value={price}
+                onChange={onPriceChange}
+                type="number"
+                inputProps={{ min: 0, max: LIMITS.maxPrice, step: 0.1 }}
+                helperText={`Enter a valid price between 0 and ${LIMITS.maxPrice}€`}
+              />
+            )}
             {/* Help Text For Publish */}
+            <Divider />
             {errorList.length > 0 && (
               <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
                 {errorList[0]}
@@ -278,7 +297,8 @@ export default function CreatePage() {
                   setTitle("");
                   setDescription("");
                   setLessons([]);
-                  setPrice("");
+                  setIsFree(true);
+                  setPrice("0");
                 }}
               >
                 Reset
@@ -287,7 +307,7 @@ export default function CreatePage() {
           </Stack>
         </CardContent>
       </Card>
-    </Container>
+      </Container>
     </Box>
   );
 }
