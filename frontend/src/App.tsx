@@ -1,8 +1,9 @@
-// src/main.tsx (router file)
+// src/main.tsx
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import StripeOnboardingTest from "./StripeOnboardingTest";
 import CreatePage from "./createpage/CreatePage";
 import HomePage from "./homepage/HomePage";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 export function ReturnPage() {
   return <div>Returned from Stripe ✅</div>;
@@ -16,7 +17,14 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/create" element={<CreatePage />} />
+        <Route
+          path="/create"
+          element={
+            <ProtectedRoute>
+              <CreatePage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/return/:accountId" element={<ReturnPage />} />
         <Route path="/refresh/:accountId" element={<RefreshPage />} />
       </Routes>
