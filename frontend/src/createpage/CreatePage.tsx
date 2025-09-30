@@ -1,3 +1,4 @@
+// src/createpage/CreatePage.tsx
 import { useMemo, useState } from "react";
 import { Box, Container, Typography } from "@mui/material";
 import CustomAppBar from "../components/CustomAppBar";
@@ -8,12 +9,17 @@ import type { Lesson } from "./Types";
 import { LIMITS } from "./Types";
 import type { Errors } from "./Types";
 
+// 👇 Firestore + Auth
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "../firebase/firebase";
+
 export default function CreatePage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isFree, setIsFree] = useState(true);
   const [price, setPrice] = useState("0");
+  const [publishing, setPublishing] = useState(false);
 
   const addLesson = () => {
     if (lessons.length >= LIMITS.maxLessons) return;
@@ -52,7 +58,17 @@ export default function CreatePage() {
     return msgs;
   }, [errors]);
 
-  const onPublish = () => {
+  // 👇 Save to Firestore
+  const onPublish = async () => {
+    if (!canPublish || publishing) return;
+
+    const user = auth.currentUser;
+    if (!user) {
+      // In theory this route should be protected already, but just in case:
+      alert("Please sign in to publish a course.");
+      return;
+    }
+
     const payload = {
       title: title.trim(),
       description: description.trim(),
@@ -61,12 +77,26 @@ export default function CreatePage() {
         title: l.title.trim(),
         content: l.content.trim(),
       })),
-      price: isFree ? 0 : Number(price),
       isFree,
-      publishedAt: new Date().toISOString(),
+      price: isFree ? 0 : Number(price),
+      creatorUid: user.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     };
-    console.log("Publishing course:", payload);
-    alert("Course published (check console for payload).");
+
+    try {
+      setPublishing(true);
+      const docRef = await addDoc(collection(db, "Courses"), payload);
+      console.log("Course published with ID:", docRef.id);
+      alert("Course published!");
+      // Optionally reset form after publish:
+      onReset();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to publish course. Please try again.");
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const onReset = () => {
@@ -106,7 +136,7 @@ export default function CreatePage() {
           setIsFree={setIsFree}
           setPrice={setPrice}
           errorList={errorList}
-          canPublish={canPublish}
+          canPublish={canPublish && !publishing}
           onPublish={onPublish}
           onReset={onReset}
         />
