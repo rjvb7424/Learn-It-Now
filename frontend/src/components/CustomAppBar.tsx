@@ -1,7 +1,16 @@
 // External imports
 import { useState, useEffect } from "react";
-import { AppBar, Toolbar, Avatar, IconButton, Button, Box, Typography } from "@mui/material";
+import {
+  AppBar,
+  Toolbar,
+  Avatar,
+  IconButton,
+  Button,
+  Box,
+  Typography,
+} from "@mui/material";
 import { onAuthStateChanged, signOut } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 
 // External type imports
 import type { User } from "firebase/auth";
@@ -13,6 +22,7 @@ import { SignIn } from "../firebase/SignIn";
 export default function CustomAppBar() {
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const navigate = useNavigate();
 
   // Listen for auth state changes
   useEffect(() => {
@@ -39,17 +49,34 @@ export default function CustomAppBar() {
   };
 
   return (
-    <AppBar position="static" sx={{ backgroundColor: "transparent", boxShadow: "none" }}>
+    <AppBar
+      position="static"
+      sx={{ backgroundColor: "transparent", boxShadow: "none" }}
+    >
       <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-        {/* Left side: Logo */}
-        <Button disableRipple sx={{ textTransform: "none" }}>
+        {/* Left side: Logo (navigates home) */}
+        <Button
+          disableRipple
+          sx={{ textTransform: "none" }}
+          onClick={() => navigate("/")}
+        >
           <Typography variant="h5" sx={{ fontWeight: "bold", color: "black" }}>
             Learn It Now
           </Typography>
         </Button>
 
-        {/* Right side: Sign in / Avatar */}
-        <Box>
+        {/* Right side: Auth + Create button */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          {user && (
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={() => navigate("/create")}
+            >
+              Create
+            </Button>
+          )}
+
           {user ? (
             <IconButton onClick={handleSignOut}>
               <Avatar
