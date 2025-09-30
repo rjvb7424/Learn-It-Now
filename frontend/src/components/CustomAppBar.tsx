@@ -1,6 +1,6 @@
 // External imports
 import { useState, useEffect } from "react";
-import { AppBar, Toolbar, Avatar, IconButton, Button, Box } from "@mui/material";
+import { AppBar, Toolbar, Avatar, IconButton, Button, Box, Typography } from "@mui/material";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 
 // External type imports
@@ -39,14 +39,16 @@ export default function CustomAppBar() {
   };
 
   return (
-    <AppBar
-      position="static"
-      sx={{
-        backgroundColor: "transparent",
-        boxShadow: "none",
-      }}
-    >
-      <Toolbar sx={{ display: "flex", justifyContent: "flex-end" }}>
+    <AppBar position="static" sx={{ backgroundColor: "transparent", boxShadow: "none" }}>
+      <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
+        {/* Left side: Logo */}
+        <Button disableRipple sx={{ textTransform: "none" }}>
+          <Typography variant="h5" sx={{ fontWeight: "bold", color: "black" }}>
+            Learn It Now
+          </Typography>
+        </Button>
+
+        {/* Right side: Sign in / Avatar */}
         <Box>
           {user ? (
             <IconButton onClick={handleSignOut}>
