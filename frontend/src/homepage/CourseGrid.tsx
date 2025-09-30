@@ -28,7 +28,15 @@ export default function CourseGrid({ courses = sampleCourses }) {
                 gap: 3,
             }}>
             {courses.map((c) => (
-                    <CourseCard key={c.id} {...c} />
+                    <CourseCard
+                    key={c.id}
+                    {...c}
+                    price={0} // or 19.99
+                    onAcquire={({ title, price }) => {
+                      // navigate to checkout / enroll
+                      console.log("Acquire:", title, price);
+                    }}
+                  />
                 ))}
         </Box>
     );
