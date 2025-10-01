@@ -1,7 +1,7 @@
 // CourseGrid.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Box, Typography } from "@mui/material";
-import { collection, onSnapshot, orderBy, query, Timestamp, getDocs, where } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query, Timestamp, getDocs, where, documentId } from "firebase/firestore";
 import CourseCard from "./CourseCard";
 import { db } from "../firebase/firebase";
 
@@ -40,6 +40,7 @@ function getInitials(name?: string) {
 export default function CourseGrid() {
   const [courses, setCourses] = useState<CourseRow[]>([]);
   const [profiles, setProfiles] = useState<Record<string, UserDoc>>({});
+  const fetchedUidsRef = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   // Subscribe to courses
@@ -72,35 +73,53 @@ export default function CourseGrid() {
     return () => unsub();
   }, []);
 
-  // Fetch creator profiles for the visible courses
-  useEffect(() => {
-    const need = Array.from(
-      new Set(courses.map((c) => c.creatorUid).filter(Boolean) as string[])
-    ).filter((uid) => !profiles[uid]);
+  // Fetch creator profiles ONLY when courses change, never on profiles change
+useEffect(() => {
+  let cancelled = false;
 
-    if (need.length === 0) return;
+  // unique list of creator UIDs from current courses
+  const allUids = Array.from(
+    new Set(courses.map((c) => c.creatorUid).filter(Boolean) as string[])
+  );
 
-    // Firestore `in` supports up to 10 items; chunk requests
-    const chunks: string[][] = [];
-    for (let i = 0; i < need.length; i += 10) chunks.push(need.slice(i, i + 10));
+  // only fetch ones we don't already have
+  const missing = allUids.filter((uid) => !fetchedUidsRef.current.has(uid));
+  if (missing.length === 0) return;
 
-    (async () => {
-      const updates: Record<string, UserDoc> = {};
-      for (const batch of chunks) {
+  (async () => {
+    for (let i = 0; i < missing.length; i += 10) {
+      const batch = missing.slice(i, i + 10);
+      try {
         const snap = await getDocs(
-          query(collection(db, "users"), where("__name__", "in", batch))
+          query(collection(db, "users"), where(documentId(), "in", batch))
         );
+
+        const updates: Record<string, UserDoc> = {};
         snap.forEach((doc) => {
           const data = doc.data() as UserDoc;
           updates[doc.id] = {
             displayName: data.displayName ?? "Creator",
             photoURL: data.photoURL ?? undefined,
           };
+          fetchedUidsRef.current.add(doc.id); // mark as fetched
         });
+
+        if (!cancelled && Object.keys(updates).length) {
+          setProfiles((prev) => ({ ...prev, ...updates }));
+        }
+      } catch (e) {
+        console.error("Failed to load user profiles batch:", e);
       }
-      setProfiles((prev) => ({ ...prev, ...updates }));
-    })().catch((e) => console.error("Failed to load user profiles:", e));
-  }, [courses, profiles]);
+
+      // tiny backoff to avoid 429s when many batches
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [courses]);
 
   const grid = useMemo(
     () => (
