@@ -21,17 +21,14 @@ export default function CreatePage() {
   const [price, setPrice] = useState("0");
   const [publishing, setPublishing] = useState(false);
 
-  const addLesson = () => {
-    if (lessons.length >= LIMITS.maxLessons) return;
-    setLessons((ls) => [...ls, { id: crypto.randomUUID(), title: "", content: "" }]);
+  const addLesson = () => setLessons(ls => [...ls, { title: "", content: "" }]);
+
+  const updateLesson = (index: number, field: "title" | "content", value: string) => {
+    setLessons(ls => ls.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   };
 
-  const updateLesson = (id: string, field: "title" | "content", value: string) => {
-    setLessons((ls) => ls.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
-  };
-
-  const removeLesson = (id: string) => {
-    setLessons((ls) => ls.filter((l) => l.id !== id));
+  const removeLesson = (index: number) => {
+    setLessons(ls => ls.filter((_, i) => i !== index));
   };
 
   const errors: Errors = useMemo(() => {
@@ -72,8 +69,7 @@ export default function CreatePage() {
     const payload = {
       title: title.trim(),
       description: description.trim(),
-      lessons: lessons.map((l, idx) => ({
-        order: idx + 1,
+      lessons: lessons.map((l) => ({
         title: l.title.trim(),
         content: l.content.trim(),
       })),
@@ -86,7 +82,7 @@ export default function CreatePage() {
 
     try {
       setPublishing(true);
-      const docRef = await addDoc(collection(db, "Courses"), payload);
+      const docRef = await addDoc(collection(db, "courses"), payload);
       console.log("Course published with ID:", docRef.id);
       alert("Course published!");
       // Optionally reset form after publish:

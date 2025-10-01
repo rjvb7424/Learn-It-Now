@@ -7,8 +7,8 @@ import type { Lesson } from "../Types";
 type Props = {
   lessons: Lesson[];
   addLesson: VoidFunction;
-  updateLesson: (id: string, field: "title" | "content", value: string) => void;
-  removeLesson: (id: string) => void;
+  updateLesson: (index: number, field: "title" | "content", value: string) => void;
+  removeLesson: (index: number) => void;
   showAddAtLeastOne?: boolean; // pass errors.lessons
 };
 
@@ -35,7 +35,7 @@ export default function ContentSection({
         </Stack>
 
         {showAddAtLeastOne && (
-          <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             Add at least one lesson (Required)
           </Typography>
         )}
@@ -43,7 +43,7 @@ export default function ContentSection({
         <Stack spacing={2}>
           {lessons.map((lesson, idx) => (
             <LessonItem
-              key={lesson.id}
+              key={idx}
               lesson={lesson}
               index={idx}
               updateLesson={updateLesson}

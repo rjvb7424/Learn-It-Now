@@ -1,3 +1,4 @@
+// LessonItem.tsx
 import { Card, CardContent, IconButton, Stack, TextField, Typography } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { LIMITS } from "../Types";
@@ -6,17 +7,17 @@ import type { Lesson } from "../Types";
 type Props = {
   lesson: Lesson;
   index: number;
-  updateLesson: (id: string, field: "title" | "content", value: string) => void;
-  removeLesson: (id: string) => void;
+  updateLesson: (index: number, field: "title" | "content", value: string) => void;
+  removeLesson: (index: number) => void;
 };
 
 export default function LessonItem({ lesson, index, updateLesson, removeLesson }: Props) {
   return (
-    <Card key={lesson.id} variant="outlined">
+    <Card variant="outlined">
       <CardContent>
         <Stack direction="row" justifyContent="space-between" mb={1}>
           <Typography variant="subtitle1">Lesson #{index + 1}</Typography>
-          <IconButton aria-label="remove lesson" onClick={() => removeLesson(lesson.id)}>
+          <IconButton aria-label="remove lesson" onClick={() => removeLesson(index)}>
             <DeleteOutlineIcon />
           </IconButton>
         </Stack>
@@ -28,7 +29,7 @@ export default function LessonItem({ lesson, index, updateLesson, removeLesson }
             value={lesson.title}
             onChange={(e) =>
               updateLesson(
-                lesson.id,
+                index,
                 "title",
                 e.target.value.length <= LIMITS.lessonTitle
                   ? e.target.value
@@ -46,7 +47,7 @@ export default function LessonItem({ lesson, index, updateLesson, removeLesson }
             value={lesson.content}
             onChange={(e) =>
               updateLesson(
-                lesson.id,
+                index,
                 "content",
                 e.target.value.length <= LIMITS.lessonContent
                   ? e.target.value
