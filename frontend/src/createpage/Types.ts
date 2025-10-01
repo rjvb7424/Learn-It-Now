@@ -13,8 +13,8 @@ export type Limits = {
 };
 
 export const LIMITS: Limits = {
-  title: 50,
-  description: 200,
+  title: 45,
+  description: 180,
   lessonTitle: 50,
   lessonContent: 500,
   maxLessons: 5,
