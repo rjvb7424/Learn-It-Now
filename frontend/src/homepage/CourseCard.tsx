@@ -82,21 +82,27 @@ export default function CourseCard({
 
   return (
     <>
-      <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
+      <Card
+        sx={{
+          borderRadius: 3,
+          boxShadow: 3,
+          height: "100%",            // fill the CSS grid cell height
+          display: "flex",           // become a flex column
+          flexDirection: "column",
+        }}
+      >
         <CardHeader
           avatar={<Avatar src={avatarUrl}>{authorInitials}</Avatar>}
           title={author}
           subheader={date}
-          sx={{
-            pt: 2,    // keep some top padding
-            pb: 0,    // remove bottom padding → no extra gap above content
-          }}
+          sx={{ pt: 2, pb: 0 }}
         />
 
         <CardContent
           sx={{
-            pt: 2,    // gap between header and content
-            pb: 2,    // gap between content and actions
+            pt: 2,
+            pb: 2,
+            flexGrow: 1,             // take remaining space → pushes actions down
           }}
         >
           <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>
@@ -111,8 +117,9 @@ export default function CourseCard({
           disableSpacing
           sx={{
             px: 2,
-            pt: 0,    // no extra gap above actions
-            pb: 2,    // bottom breathing room; doesn’t affect the content→actions gap
+            pt: 0,
+            pb: 2,
+            // mt: "auto",            // alternative to flexGrow above (either works)
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
