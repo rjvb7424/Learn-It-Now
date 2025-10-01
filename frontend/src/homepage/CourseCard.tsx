@@ -14,12 +14,16 @@ import {
   DialogActions,
   Divider,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
 
 import { auth } from "../firebase/firebase";
 import { SignIn } from "../firebase/SignIn";
+
+// 👇 Firestore (for free acquisitions)
+import { db } from "../firebase/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const clamp = (lines = 2) => ({
   display: "-webkit-box",
@@ -28,25 +32,26 @@ const clamp = (lines = 2) => ({
   overflow: "hidden",
 });
 
-type AcquirePayload = { title: string; price: number; description: string };
+type AcquirePayload = { title: string; price: number; description: string; courseId?: string };
 
 type CourseCardProps = {
+  courseId: string;                // 👈 NEW: needed to save a purchase
   author?: string;
   authorInitials?: string;
-  avatarUrl?: string;       // 👈 NEW
+  avatarUrl?: string;
   date?: string;
   title?: string;
   description?: string;
-  likes?: string;
   price?: number;
   onLearn?: () => void;
-  onAcquire?: (payload: AcquirePayload) => void;
+  onAcquire?: (payload: AcquirePayload) => void; // used for paid flow
 };
 
 export default function CourseCard({
+  courseId,
   author = "John Doe",
   authorInitials = "JD",
-  avatarUrl,                 // 👈 NEW
+  avatarUrl,
   date = "September 14, 2021",
   title = "Python Coding for Absolute Beginners",
   description = "Learn Python from scratch and become a proficient programmer with our comprehensive course designed for absolute beginners. Start your coding journey today!",
@@ -63,6 +68,11 @@ export default function CourseCard({
     return () => unsub();
   }, []);
 
+  const ctaLabel = useMemo(
+    () => (isFree ? "Get Started — Free" : `Acquire — $${Number(price).toFixed(2)}`),
+    [isFree, price]
+  );
+
   const handleLearnClick = () => {
     onLearn?.();
     setOpen(true);
@@ -72,8 +82,35 @@ export default function CourseCard({
     await SignIn();
   };
 
-  const handleAcquire = () => {
-    onAcquire?.({ title, price: Number(price) || 0, description });
+  const handleAcquire = async () => {
+    if (isFree) {
+      if (!user) {
+        // Shouldn’t happen because dialog shows sign-in prompt when not authed,
+        // but guard anyway.
+        return;
+      }
+      try {
+        // Save purchase at users/{uid}/purchases/{courseId}
+        await setDoc(
+          doc(db, "users", user.uid, "purchases", courseId),
+          {
+            courseId,
+            acquiredAt: serverTimestamp(),
+            title,
+            price: 0,
+          },
+          { merge: true }
+        );
+        setOpen(false);
+      } catch (e) {
+        console.error("Failed to acquire free course:", e);
+        // Optional: show a toast/snackbar here
+      }
+      return;
+    }
+
+    // Paid: hand off to parent flow (checkout, etc.)
+    onAcquire?.({ title, price: Number(price) || 0, description, courseId });
     setOpen(false);
   };
 
@@ -83,8 +120,8 @@ export default function CourseCard({
         sx={{
           borderRadius: 3,
           boxShadow: 3,
-          height: "100%",            // fill the CSS grid cell height
-          display: "flex",           // become a flex column
+          height: "100%",
+          display: "flex",
           flexDirection: "column",
         }}
       >
@@ -99,7 +136,7 @@ export default function CourseCard({
           sx={{
             pt: 2,
             pb: 2,
-            flexGrow: 1,             // take remaining space → pushes actions down
+            flexGrow: 1, // keeps actions stuck to bottom
           }}
         >
           <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>
@@ -116,15 +153,14 @@ export default function CourseCard({
             px: 2,
             pt: 0,
             pb: 2,
-            // mt: "auto",            // alternative to flexGrow above (either works)
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: "flex-end",
             gap: 1,
           }}
         >
           <Button size="small" variant="contained" onClick={handleLearnClick}>
-            Learn It Now!
+            {ctaLabel}
           </Button>
         </CardActions>
       </Card>
@@ -163,7 +199,7 @@ export default function CourseCard({
             <DialogActions>
               <Button onClick={() => setOpen(false)}>Close</Button>
               <Button variant="contained" onClick={handleAcquire}>
-                {isFree ? "Get Course" : "Acquire Course"}
+                {isFree ? "Get Started" : "Acquire"}
               </Button>
             </DialogActions>
           </>

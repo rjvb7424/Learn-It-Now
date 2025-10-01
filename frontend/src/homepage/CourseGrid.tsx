@@ -147,6 +147,7 @@ useEffect(() => {
           return (
             <CourseCard
               key={c.id}
+              courseId={c.id}
               author={name}
               authorInitials={initials}
               avatarUrl={avatarUrl}
