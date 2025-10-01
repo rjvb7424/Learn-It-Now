@@ -5,7 +5,6 @@ import {
   CardActions,
   CardContent,
   CardHeader,
-  IconButton,
   Typography,
   Button,
   Box,
@@ -15,7 +14,6 @@ import {
   DialogActions,
   Divider,
 } from "@mui/material";
-import { Favorite, Share } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
@@ -52,7 +50,6 @@ export default function CourseCard({
   date = "September 14, 2021",
   title = "Python Coding for Absolute Beginners",
   description = "Learn Python from scratch and become a proficient programmer with our comprehensive course designed for absolute beginners. Start your coding journey today!",
-  likes = "13K",
   price = 0,
   onLearn,
   onAcquire,
@@ -126,18 +123,6 @@ export default function CourseCard({
             gap: 1,
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Typography variant="body2" sx={{ mr: 0.5 }}>
-              {likes}
-            </Typography>
-            <IconButton size="small">
-              <Favorite fontSize="small" />
-            </IconButton>
-            <IconButton size="small">
-              <Share fontSize="small" />
-            </IconButton>
-          </Box>
-
           <Button size="small" variant="contained" onClick={handleLearnClick}>
             Learn It Now!
           </Button>
