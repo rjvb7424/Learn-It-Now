@@ -1,3 +1,4 @@
+// CourseCard.tsx
 import {
   Avatar,
   Card,
@@ -34,11 +35,12 @@ type AcquirePayload = { title: string; price: number; description: string };
 type CourseCardProps = {
   author?: string;
   authorInitials?: string;
+  avatarUrl?: string;       // 👈 NEW
   date?: string;
   title?: string;
   description?: string;
   likes?: string;
-  price?: number; // 0 or falsy = Free
+  price?: number;
   onLearn?: () => void;
   onAcquire?: (payload: AcquirePayload) => void;
 };
@@ -46,6 +48,7 @@ type CourseCardProps = {
 export default function CourseCard({
   author = "John Doe",
   authorInitials = "JD",
+  avatarUrl,                 // 👈 NEW
   date = "September 14, 2021",
   title = "Python Coding for Absolute Beginners",
   description = "Learn Python from scratch and become a proficient programmer with our comprehensive course designed for absolute beginners. Start your coding journey today!",
@@ -55,7 +58,7 @@ export default function CourseCard({
   onAcquire,
 }: CourseCardProps) {
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null); // ← typed
+  const [user, setUser] = useState<User | null>(null);
   const isFree = !price || Number(price) === 0;
 
   useEffect(() => {
@@ -70,7 +73,6 @@ export default function CourseCard({
 
   const handleSignIn = async () => {
     await SignIn();
-    // onAuthStateChanged will update `user`
   };
 
   const handleAcquire = () => {
@@ -81,7 +83,11 @@ export default function CourseCard({
   return (
     <>
       <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-        <CardHeader avatar={<Avatar>{authorInitials}</Avatar>} title={author} subheader={date} />
+        <CardHeader
+          avatar={<Avatar src={avatarUrl}>{authorInitials}</Avatar>}
+          title={author}
+          subheader={date}
+        />
 
         <CardContent sx={{ flexGrow: 1 }}>
           <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>
@@ -94,15 +100,7 @@ export default function CourseCard({
 
         <CardActions
           disableSpacing
-          sx={{
-            px: 2,
-            pb: 2,
-            pt: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 1,
-          }}
+          sx={{ px: 2, pb: 2, pt: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <Typography variant="body2" sx={{ mr: 0.5 }}>
