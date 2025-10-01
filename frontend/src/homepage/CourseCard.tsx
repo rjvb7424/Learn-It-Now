@@ -87,9 +87,18 @@ export default function CourseCard({
           avatar={<Avatar src={avatarUrl}>{authorInitials}</Avatar>}
           title={author}
           subheader={date}
+          sx={{
+            pt: 2,    // keep some top padding
+            pb: 0,    // remove bottom padding → no extra gap above content
+          }}
         />
 
-        <CardContent sx={{ flexGrow: 1 }}>
+        <CardContent
+          sx={{
+            pt: 2,    // gap between header and content
+            pb: 2,    // gap between content and actions
+          }}
+        >
           <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>
             {title}
           </Typography>
@@ -100,7 +109,15 @@ export default function CourseCard({
 
         <CardActions
           disableSpacing
-          sx={{ px: 2, pb: 2, pt: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}
+          sx={{
+            px: 2,
+            pt: 0,    // no extra gap above actions
+            pb: 2,    // bottom breathing room; doesn’t affect the content→actions gap
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1,
+          }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <Typography variant="body2" sx={{ mr: 0.5 }}>
