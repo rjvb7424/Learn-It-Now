@@ -119,12 +119,20 @@ export default function CourseCard({
   return (
     <>
       <Card sx={{ borderRadius: 3, boxShadow: 3, height: "100%", display: "flex", flexDirection: "column" }}>
-        <CardHeader
-          avatar={<Avatar src={avatarUrl}>{authorInitials}</Avatar>}
-          title={author}
-          subheader={date}
-          sx={{ pt: 2, pb: 0 }}
-        />
+      <CardHeader
+        avatar={
+          <Avatar
+            src={avatarUrl || undefined}
+            imgProps={{ referrerPolicy: "no-referrer", loading: "lazy" }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = ""; }} // fall back to initials
+          >
+            {authorInitials}
+          </Avatar>
+        }
+        title={author}
+        subheader={date}
+        sx={{ pt: 2, pb: 0 }}
+      />
         <CardContent sx={{ pt: 2, pb: 2, flexGrow: 1 }}>
           <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>{title}</Typography>
           <Typography variant="body2" color="text.secondary" sx={clamp(3)}>{description}</Typography>

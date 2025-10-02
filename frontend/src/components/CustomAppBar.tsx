@@ -165,9 +165,14 @@ export default function CustomAppBar() {
             )}
 
             {user ? (
-              <IconButton onClick={handleSignOut}>
-                <Avatar src={user.photoURL ?? undefined} alt={user.displayName ?? "User"} />
-              </IconButton>
+            <IconButton onClick={handleSignOut}>
+              <Avatar
+                src={user?.photoURL ?? undefined}
+                imgProps={{ referrerPolicy: "no-referrer", loading: "lazy" }}
+                alt={user?.displayName ?? "User"}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = ""; }}
+              />
+            </IconButton>
             ) : (
               <Button variant="contained" color="primary" onClick={handleSignIn} disabled={loadingSignIn}>
                 {loadingSignIn ? "Signing in..." : "Sign In"}
