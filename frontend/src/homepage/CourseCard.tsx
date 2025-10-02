@@ -1,27 +1,13 @@
 // CourseCard.tsx
 import {
-  Avatar,
-  Card,
-  CardActions,
-  CardContent,
-  CardHeader,
-  Typography,
-  Button,
-  Box,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Divider,
+  Avatar, Card, CardActions, CardContent, CardHeader,
+  Typography, Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, Divider
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
-
 import { auth, db } from "../firebase/firebase";
 import { SignIn } from "../firebase/SignIn";
-
-// Firestore helpers
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const clamp = (lines = 2) => ({
@@ -31,12 +17,7 @@ const clamp = (lines = 2) => ({
   overflow: "hidden",
 });
 
-type AcquirePayload = {
-  title: string;
-  price: number;
-  description: string;
-  courseId: string;
-};
+type AcquirePayload = { title: string; price: number; description: string; courseId: string };
 
 type CourseCardProps = {
   courseId: string;
@@ -48,8 +29,8 @@ type CourseCardProps = {
   description?: string;
   price?: number;
   onAcquire?: (payload: AcquirePayload) => void; // paid path
-  onOpenCourse?: (courseId: string) => void; // navigate to course reader
-  purchased?: boolean; // optional external override
+  onOpenCourse?: (courseId: string) => void;     // navigate to reader
+  purchased?: boolean;                            // optional override from parent
 };
 
 export default function CourseCard({
@@ -68,144 +49,95 @@ export default function CourseCard({
   const [user, setUser] = useState<User | null>(null);
   const [purchased, setPurchased] = useState<boolean>(!!purchasedProp);
   const [open, setOpen] = useState(false);
-
   const isFree = !price || Number(price) === 0;
 
-  // Keep local purchased in sync if parent passes it
+  // sync purchased from parent (if provided)
   useEffect(() => {
     if (typeof purchasedProp === "boolean") setPurchased(purchasedProp);
   }, [purchasedProp]);
 
-  // Track auth
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
-    return () => unsub();
-  }, []);
+  // auth
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
 
-  // Check if user already owns this course
+  // check ownership when signed in (only if parent didn't provide it)
   useEffect(() => {
-    let cancelled = false;
+    let cancel = false;
     (async () => {
-      if (!user) {
-        if (!purchasedProp) setPurchased(false);
-        return;
-      }
-      // If parent already told us, don't re-check
-      if (typeof purchasedProp === "boolean") return;
-
+      if (!user || typeof purchasedProp === "boolean") return;
       try {
         const ref = doc(db, "users", user.uid, "purchases", courseId);
         const snap = await getDoc(ref);
-        if (!cancelled) setPurchased(snap.exists());
+        if (!cancel) setPurchased(snap.exists());
       } catch (e) {
-        console.error("Failed to check purchase:", e);
+        console.error("Failed checking purchase:", e);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancel = true; };
   }, [user, courseId, purchasedProp]);
 
-  // Primary CTA click
-  const handlePrimaryClick = () => {
+  // always opens dialog
+  const handlePrimaryButton = () => setOpen(true);
+
+  const handleSignIn = async () => {
+    await SignIn();
+    // onAuthStateChanged will rerun and dialog will remain open
+  };
+
+  const acquireFreeAndOpen = async () => {
+    if (!user) return;
+    try {
+      // purchase doc id == course id; store progress seed
+      await setDoc(
+        doc(db, "users", user.uid, "purchases", courseId),
+        { acquiredAt: serverTimestamp(), currentLessonIndex: 0 },
+        { merge: true }
+      );
+      setPurchased(true);
+      setOpen(false);
+      onOpenCourse?.(courseId);
+    } catch (e) {
+      console.error("Failed to acquire free course:", e);
+    }
+  };
+
+  const handleDialogPrimary = () => {
+    if (!user) return; // sign-in panel guards this
     if (purchased) {
+      setOpen(false);
       onOpenCourse?.(courseId);
       return;
     }
-    // Not owned yet → show dialog with Acquire
-    setOpen(true);
-  };
-
-  // Sign in from dialog
-  const handleSignIn = async () => {
-    await SignIn();
-    // onAuthStateChanged will update `user`, then the purchase check runs
-  };
-
-  // Acquire from dialog
-  const handleAcquire = async () => {
-    if (!user) return; // guarded by dialog
-
     if (isFree) {
-      try {
-        // Save only the timestamp; doc id == course id
-        await setDoc(
-          doc(db, "users", user.uid, "purchases", courseId),
-          { acquiredAt: serverTimestamp() },
-          { merge: true }
-        );
-        setPurchased(true);
-        setOpen(false);
-        onOpenCourse?.(courseId);
-      } catch (e) {
-        console.error("Failed to acquire free course:", e);
-      }
+      acquireFreeAndOpen();
       return;
     }
-
-    // Paid flow – hand off
-    onAcquire?.({
-      title,
-      price: Number(price) || 0,
-      description,
-      courseId,
-    });
+    // paid
+    onAcquire?.({ title, price: Number(price) || 0, description, courseId });
     setOpen(false);
   };
 
   return (
     <>
-      <Card
-        sx={{
-          borderRadius: 3,
-          boxShadow: 3,
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
+      <Card sx={{ borderRadius: 3, boxShadow: 3, height: "100%", display: "flex", flexDirection: "column" }}>
         <CardHeader
           avatar={<Avatar src={avatarUrl}>{authorInitials}</Avatar>}
           title={author}
           subheader={date}
           sx={{ pt: 2, pb: 0 }}
         />
-
         <CardContent sx={{ pt: 2, pb: 2, flexGrow: 1 }}>
-          <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>
-            {title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={clamp(3)}>
-            {description}
-          </Typography>
+          <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>{title}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={clamp(3)}>{description}</Typography>
         </CardContent>
-
-        <CardActions
-          disableSpacing
-          sx={{
-            px: 2,
-            pt: 0,
-            pb: 2,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            gap: 1,
-          }}
-        >
-          <Button size="small" variant="contained" onClick={handlePrimaryClick}>
-            {purchased ? "Learn It Now" : "Learn It Now"}
+        <CardActions disableSpacing sx={{ px: 2, pt: 0, pb: 2, display: "flex", justifyContent: "flex-end" }}>
+          <Button size="small" variant="contained" onClick={handlePrimaryButton}>
+            Learn It Now
           </Button>
         </CardActions>
       </Card>
 
-      {/* Acquire dialog */}
-      <Dialog
-        open={open}
-        onClose={() => setOpen(false)}
-        fullWidth
-        maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 3 } }}
-      >
+      {/* Dialog always appears; primary action changes based on ownership/price */}
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 3 } }}>
         {!user ? (
           <>
             <DialogTitle>Sign in required</DialogTitle>
@@ -213,41 +145,28 @@ export default function CourseCard({
               <Typography variant="body1" sx={{ mb: 1.5 }}>
                 To access courses you must be signed in.
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Create an account or sign in to continue.
-              </Typography>
             </DialogContent>
             <DialogActions>
               <Button onClick={() => setOpen(false)}>Close</Button>
-              <Button variant="contained" onClick={handleSignIn}>
-                Sign In
-              </Button>
+              <Button variant="contained" onClick={handleSignIn}>Sign In</Button>
             </DialogActions>
           </>
         ) : (
           <>
             <DialogTitle>{title}</DialogTitle>
             <DialogContent dividers>
-              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                {description}
-              </Typography>
+              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>{description}</Typography>
               <Divider sx={{ my: 2 }} />
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  {isFree ? "Free" : `Price: $${Number(price).toFixed(2)}`}
+                  {purchased ? "You own this course" : isFree ? "Free" : `Price: $${Number(price).toFixed(2)}`}
                 </Typography>
               </Box>
             </DialogContent>
             <DialogActions>
               <Button onClick={() => setOpen(false)}>Close</Button>
-              <Button variant="contained" onClick={handleAcquire}>
-                {isFree ? "Get Started" : "Acquire"}
+              <Button variant="contained" onClick={handleDialogPrimary}>
+                {purchased ? "Continue" : isFree ? "Get Started" : "Acquire"}
               </Button>
             </DialogActions>
           </>
