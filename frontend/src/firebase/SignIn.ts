@@ -23,6 +23,7 @@ export async function SignIn(): Promise<void> {
             displayName: user.displayName,
             photoURL: user.photoURL,
             createdAt: serverTimestamp(),
+            stripeOnboarded: false,
         });
     } catch (error) {
         console.error("Error signing in:", error);
