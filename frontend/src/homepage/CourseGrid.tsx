@@ -1,9 +1,13 @@
 // CourseGrid.tsx
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Box, Typography } from "@mui/material";
-import { collection, onSnapshot, orderBy, query, Timestamp, getDocs, where, documentId } from "firebase/firestore";
+import {
+  collection, onSnapshot, orderBy, query, Timestamp, getDocs, where, documentId,
+} from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 import CourseCard from "./CourseCard";
-import { db } from "../firebase/firebase";
+import { db, auth } from "../firebase/firebase";
 
 type FirestoreCourse = {
   title?: string;
@@ -42,8 +46,10 @@ export default function CourseGrid() {
   const [profiles, setProfiles] = useState<Record<string, UserDoc>>({});
   const fetchedUidsRef = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [purchasedIds, setPurchasedIds] = useState<Set<string>>(new Set()); // 👈 add back
+  const navigate = useNavigate();
 
-  // Subscribe to courses
+  // Courses subscription
   useEffect(() => {
     const q = query(collection(db, "courses"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
@@ -73,99 +79,63 @@ export default function CourseGrid() {
     return () => unsub();
   }, []);
 
-  // Fetch creator profiles ONLY when courses change, never on profiles change
-useEffect(() => {
-  let cancelled = false;
-
-  // unique list of creator UIDs from current courses
-  const allUids = Array.from(
-    new Set(courses.map((c) => c.creatorUid).filter(Boolean) as string[])
-  );
-
-  // only fetch ones we don't already have
-  const missing = allUids.filter((uid) => !fetchedUidsRef.current.has(uid));
-  if (missing.length === 0) return;
-
-  (async () => {
-    for (let i = 0; i < missing.length; i += 10) {
-      const batch = missing.slice(i, i + 10);
-      try {
-        const snap = await getDocs(
-          query(collection(db, "users"), where(documentId(), "in", batch))
-        );
-
-        const updates: Record<string, UserDoc> = {};
-        snap.forEach((doc) => {
-          const data = doc.data() as UserDoc;
-          updates[doc.id] = {
-            displayName: data.displayName ?? "Creator",
-            photoURL: data.photoURL ?? undefined,
-          };
-          fetchedUidsRef.current.add(doc.id); // mark as fetched
-        });
-
-        if (!cancelled && Object.keys(updates).length) {
-          setProfiles((prev) => ({ ...prev, ...updates }));
-        }
-      } catch (e) {
-        console.error("Failed to load user profiles batch:", e);
+  // Purchases subscription for current user 👇
+  useEffect(() => {
+    let purchasesUnsub: (() => void) | undefined;
+    const authUnsub = onAuthStateChanged(auth, (u) => {
+      purchasesUnsub?.();
+      if (!u) {
+        setPurchasedIds(new Set());
+        return;
       }
+      const ref = collection(db, "users", u.uid, "purchases");
+      purchasesUnsub = onSnapshot(
+        ref,
+        (snap) => {
+          const ids = new Set<string>();
+          snap.forEach((d) => ids.add(d.id)); // doc.id === courseId
+          setPurchasedIds(ids);
+        },
+        (err) => {
+          console.error("Failed to load purchases:", err);
+          setPurchasedIds(new Set());
+        }
+      );
+    });
+    return () => {
+      authUnsub();
+      purchasesUnsub?.();
+    };
+  }, []);
 
-      // tiny backoff to avoid 429s when many batches
-      await new Promise((r) => setTimeout(r, 50));
-    }
-  })();
+  // Fetch creator profiles when courses change (unchanged)
+  useEffect(() => {
+    let cancelled = false;
+    const allUids = Array.from(new Set(courses.map((c) => c.creatorUid).filter(Boolean) as string[]));
+    const missing = allUids.filter((uid) => !fetchedUidsRef.current.has(uid));
+    if (missing.length === 0) return;
 
-  return () => {
-    cancelled = true;
-  };
-}, [courses]);
+    (async () => {
+      for (let i = 0; i < missing.length; i += 10) {
+        const batch = missing.slice(i, i + 10);
+        try {
+          const snap = await getDocs(query(collection(db, "users"), where(documentId(), "in", batch)));
+          const updates: Record<string, UserDoc> = {};
+          snap.forEach((doc) => {
+            const d = doc.data() as UserDoc;
+            updates[doc.id] = { displayName: d.displayName ?? "Creator", photoURL: d.photoURL ?? undefined };
+            fetchedUidsRef.current.add(doc.id);
+          });
+          if (!cancelled && Object.keys(updates).length) setProfiles((prev) => ({ ...prev, ...updates }));
+        } catch (e) {
+          console.error("Failed to load user profiles batch:", e);
+        }
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    })();
 
-  const grid = useMemo(
-    () => (
-      <Box
-        sx={{
-          px: 3,
-          py: 3,
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
-          gap: 3,
-        }}
-      >
-        {courses.map((c) => {
-          const prof = c.creatorUid ? profiles[c.creatorUid] : undefined;
-          const name = prof?.displayName ?? "Creator";
-          const avatarUrl = prof?.photoURL;
-          const initials = getInitials(name);
-          const date =
-            c.createdAt?.toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            }) ?? "—";
-
-          return (
-            <CourseCard
-              key={c.id}
-              courseId={c.id}
-              author={name}
-              authorInitials={initials}
-              avatarUrl={avatarUrl}
-              date={date}
-              title={c.title}
-              description={c.description}
-              price={c.isFree ? 0 : c.price}
-              onAcquire={({ title, price }) => {
-                console.log("Acquire:", title, price, "courseId:", c.id);
-                // e.g. navigate(`/checkout/${c.id}`)
-              }}
-            />
-          );
-        })}
-      </Box>
-    ),
-    [courses, profiles]
-  );
+    return () => { cancelled = true; };
+  }, [courses]);
 
   if (loading) {
     return (
@@ -183,5 +153,45 @@ useEffect(() => {
     );
   }
 
-  return grid;
+  // No useMemo needed; render directly (avoids navigate dep warning)
+  return (
+    <Box
+      sx={{
+        px: 3,
+        py: 3,
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
+        gap: 3,
+      }}
+    >
+      {courses.map((c) => {
+        const prof = c.creatorUid ? profiles[c.creatorUid] : undefined;
+        const name = prof?.displayName ?? "Creator";
+        const avatarUrl = prof?.photoURL;
+        const initials = getInitials(name);
+        const date =
+          c.createdAt?.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) ?? "—";
+
+        return (
+          <CourseCard
+            key={c.id}
+            courseId={c.id}
+            author={name}
+            authorInitials={initials}
+            avatarUrl={avatarUrl}
+            date={date}
+            title={c.title}
+            description={c.description}
+            price={c.isFree ? 0 : c.price}
+            purchased={purchasedIds.has(c.id)}               // ✅ now defined
+            onOpenCourse={(id) => navigate(`/course/${id}`)}
+            onAcquire={({ courseId, title, price }) => {
+              console.log("Acquire paid:", courseId, title, price);
+              // navigate(`/checkout/${courseId}`)
+            }}
+          />
+        );
+      })}
+    </Box>
+  );
 }

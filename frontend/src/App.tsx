@@ -4,6 +4,7 @@ import StripeOnboardingTest from "./StripeOnboardingTest";
 import CreatePage from "./createpage/CreatePage";
 import HomePage from "./homepage/HomePage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import CoursePage from "./coursepage/CoursePage";
 
 export function ReturnPage() {
   return <div>Returned from Stripe ✅</div>;
@@ -22,6 +23,7 @@ export default function App() {
           element={
             <ProtectedRoute>
               <CreatePage />
+              <Route path="/course/:courseId" element={<CoursePage />} />
             </ProtectedRoute>
           }
         />
