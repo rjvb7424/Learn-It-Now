@@ -14,16 +14,15 @@ import {
   DialogActions,
   Divider,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
 
-import { auth } from "../firebase/firebase";
+import { auth, db } from "../firebase/firebase";
 import { SignIn } from "../firebase/SignIn";
 
-// 👇 Firestore (for free acquisitions)
-import { db } from "../firebase/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+// Firestore helpers
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const clamp = (lines = 2) => ({
   display: "-webkit-box",
@@ -32,10 +31,15 @@ const clamp = (lines = 2) => ({
   overflow: "hidden",
 });
 
-type AcquirePayload = { title: string; price: number; description: string; courseId?: string };
+type AcquirePayload = {
+  title: string;
+  price: number;
+  description: string;
+  courseId: string;
+};
 
 type CourseCardProps = {
-  courseId: string;                // 👈 NEW: needed to save a purchase
+  courseId: string;
   author?: string;
   authorInitials?: string;
   avatarUrl?: string;
@@ -43,8 +47,9 @@ type CourseCardProps = {
   title?: string;
   description?: string;
   price?: number;
-  onLearn?: () => void;
-  onAcquire?: (payload: AcquirePayload) => void; // used for paid flow
+  onAcquire?: (payload: AcquirePayload) => void; // paid path
+  onOpenCourse?: (courseId: string) => void; // navigate to course reader
+  purchased?: boolean; // optional external override
 };
 
 export default function CourseCard({
@@ -56,61 +61,95 @@ export default function CourseCard({
   title = "Python Coding for Absolute Beginners",
   description = "Learn Python from scratch and become a proficient programmer with our comprehensive course designed for absolute beginners. Start your coding journey today!",
   price = 0,
-  onLearn,
   onAcquire,
+  onOpenCourse,
+  purchased: purchasedProp,
 }: CourseCardProps) {
-  const [open, setOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [purchased, setPurchased] = useState<boolean>(!!purchasedProp);
+  const [open, setOpen] = useState(false);
+
   const isFree = !price || Number(price) === 0;
 
+  // Keep local purchased in sync if parent passes it
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
+    if (typeof purchasedProp === "boolean") setPurchased(purchasedProp);
+  }, [purchasedProp]);
+
+  // Track auth
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsub();
   }, []);
 
-  const ctaLabel = useMemo(
-    () => (isFree ? "Get Started — Free" : `Acquire — $${Number(price).toFixed(2)}`),
-    [isFree, price]
-  );
+  // Check if user already owns this course
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!user) {
+        if (!purchasedProp) setPurchased(false);
+        return;
+      }
+      // If parent already told us, don't re-check
+      if (typeof purchasedProp === "boolean") return;
 
-  const handleLearnClick = () => {
-    onLearn?.();
+      try {
+        const ref = doc(db, "users", user.uid, "purchases", courseId);
+        const snap = await getDoc(ref);
+        if (!cancelled) setPurchased(snap.exists());
+      } catch (e) {
+        console.error("Failed to check purchase:", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, courseId, purchasedProp]);
+
+  // Primary CTA click
+  const handlePrimaryClick = () => {
+    if (purchased) {
+      onOpenCourse?.(courseId);
+      return;
+    }
+    // Not owned yet → show dialog with Acquire
     setOpen(true);
   };
 
+  // Sign in from dialog
   const handleSignIn = async () => {
     await SignIn();
+    // onAuthStateChanged will update `user`, then the purchase check runs
   };
 
+  // Acquire from dialog
   const handleAcquire = async () => {
+    if (!user) return; // guarded by dialog
+
     if (isFree) {
-      if (!user) {
-        // Shouldn’t happen because dialog shows sign-in prompt when not authed,
-        // but guard anyway.
-        return;
-      }
       try {
-        // Save purchase at users/{uid}/purchases/{courseId}
+        // Save only the timestamp; doc id == course id
         await setDoc(
           doc(db, "users", user.uid, "purchases", courseId),
-          {
-            courseId,
-            acquiredAt: serverTimestamp(),
-            title,
-            price: 0,
-          },
+          { acquiredAt: serverTimestamp() },
           { merge: true }
         );
+        setPurchased(true);
         setOpen(false);
+        onOpenCourse?.(courseId);
       } catch (e) {
         console.error("Failed to acquire free course:", e);
-        // Optional: show a toast/snackbar here
       }
       return;
     }
 
-    // Paid: hand off to parent flow (checkout, etc.)
-    onAcquire?.({ title, price: Number(price) || 0, description, courseId });
+    // Paid flow – hand off
+    onAcquire?.({
+      title,
+      price: Number(price) || 0,
+      description,
+      courseId,
+    });
     setOpen(false);
   };
 
@@ -132,13 +171,7 @@ export default function CourseCard({
           sx={{ pt: 2, pb: 0 }}
         />
 
-        <CardContent
-          sx={{
-            pt: 2,
-            pb: 2,
-            flexGrow: 1, // keeps actions stuck to bottom
-          }}
-        >
+        <CardContent sx={{ pt: 2, pb: 2, flexGrow: 1 }}>
           <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>
             {title}
           </Typography>
@@ -159,13 +192,20 @@ export default function CourseCard({
             gap: 1,
           }}
         >
-          <Button size="small" variant="contained" onClick={handleLearnClick}>
-            {ctaLabel}
+          <Button size="small" variant="contained" onClick={handlePrimaryClick}>
+            {purchased ? "Learn It Now" : "Learn It Now"}
           </Button>
         </CardActions>
       </Card>
 
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 3 } }}>
+      {/* Acquire dialog */}
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
         {!user ? (
           <>
             <DialogTitle>Sign in required</DialogTitle>
@@ -178,8 +218,10 @@ export default function CourseCard({
               </Typography>
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setOpen(false)}>Cancel</Button>
-              <Button variant="contained" onClick={handleSignIn}>Sign In</Button>
+              <Button onClick={() => setOpen(false)}>Close</Button>
+              <Button variant="contained" onClick={handleSignIn}>
+                Sign In
+              </Button>
             </DialogActions>
           </>
         ) : (
@@ -190,7 +232,13 @@ export default function CourseCard({
                 {description}
               </Typography>
               <Divider sx={{ my: 2 }} />
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   {isFree ? "Free" : `Price: $${Number(price).toFixed(2)}`}
                 </Typography>
