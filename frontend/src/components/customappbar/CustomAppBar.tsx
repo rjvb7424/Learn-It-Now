@@ -10,6 +10,8 @@ import StripeSetupDialog from "./StripeSetupDialog";
 import CreateButton from "./CreateButton";
 import UserAvatarButton from "./UserAvatarButton";
 
+// TODO - add the profile menu
+
 export default function CustomAppBar() {
   const navigate = useNavigate();
   const [loadingSignIn, setLoadingSignIn] = useState(false);
