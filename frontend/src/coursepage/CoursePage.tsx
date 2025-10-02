@@ -5,6 +5,7 @@ import { Box, Button, Card, CardContent, Container, Typography } from "@mui/mate
 import { auth, db } from "../firebase/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore"; // ⬅️ remove updateDoc
+import CustomAppBar from "../components/CustomAppBar";
 
 type Lesson = { title: string; content: string };
 type CourseDoc = {
@@ -89,6 +90,8 @@ export default function CoursePage() {
   };
 
   return (
+    <Box>
+        <CustomAppBar />
     <Container sx={{ py: 4 }}>
       <Typography variant="h4" sx={{ mb: 1 }}>
         {course.title ?? "Course"}
@@ -117,5 +120,6 @@ export default function CoursePage() {
         </Button>
       </Box>
     </Container>
+    </Box>
   );
 }
