@@ -1,7 +1,7 @@
 // src/createpage/CreatePage.tsx
 import { useMemo, useState } from "react";
 import { Box, Container, Typography } from "@mui/material";
-import CustomAppBar from "../components/CustomAppBar";
+import CustomAppBar from "../components/customappbar/CustomAppBar";
 import DetailsSection from "./components/DetailsSection";
 import ContentSection from "./components/ContentSection";
 import PricingPublishSection from "./components/PricingPublishSection";

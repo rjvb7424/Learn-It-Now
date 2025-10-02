@@ -1,5 +1,5 @@
 import { Button } from "@mui/material";
-import { SignIn } from "../firebase/SignIn";
+import { SignIn } from "../../firebase/SignIn";
 import { useNavigate } from "react-router-dom";
 
 type Props = {

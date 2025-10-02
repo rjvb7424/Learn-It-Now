@@ -1,6 +1,6 @@
 // HomePage.tsx
 import { Box } from "@mui/material";
-import CustomAppBar from "../components/CustomAppBar";
+import CustomAppBar from "../components/customappbar/CustomAppBar";
 import CourseGrid from "./CourseGrid";
 import SearchOverlay from "./SearchBar";
 

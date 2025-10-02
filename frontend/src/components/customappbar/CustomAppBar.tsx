@@ -2,10 +2,10 @@ import { useState } from "react";
 import { AppBar, Toolbar, Button, Box, Typography } from "@mui/material";
 import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase/firebase";
+import { auth } from "../../firebase/firebase";
 
-import { useAuthProfile } from "../hooks/useAuthProfile";
-import { useStripeOnboarding } from "../hooks/useStripeOnboarding";
+import { useAuthProfile } from "../../hooks/useAuthProfile";
+import { useStripeOnboarding } from "../../hooks/useStripeOnboarding";
 import StripeSetupDialog from "./StripeSetupDialog";
 import CreateButton from "./CreateButton";
 import UserAvatarButton from "./UserAvatarButton";

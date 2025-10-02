@@ -5,7 +5,7 @@ import { Box, Button, Card, CardContent, Container, Typography } from "@mui/mate
 import { auth, db } from "../firebase/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore"; // ⬅️ remove updateDoc
-import CustomAppBar from "../components/CustomAppBar";
+import CustomAppBar from "../components/customappbar/CustomAppBar";
 
 type Lesson = { title: string; content: string };
 type CourseDoc = {
