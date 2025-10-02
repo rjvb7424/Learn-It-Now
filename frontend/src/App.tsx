@@ -5,8 +5,8 @@ import CreatePage from "./createpage/CreatePage";
 import CoursePage from "./coursepage/CoursePage";
 import StripeOnboardingTest from "./StripeOnboardingTest";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { ReturnPage } from "./ReturnPage";
 
-export function ReturnPage() { return <div>Returned from Stripe ✅</div>; }
 export function RefreshPage() { return <div>Onboarding expired, retrying…</div>; }
 
 export default function App() {
