@@ -1,3 +1,4 @@
+// src/components/appbar/CustomAppBar.tsx
 import { useState } from "react";
 import { AppBar, Toolbar, Button, Box, Typography } from "@mui/material";
 import { signOut } from "firebase/auth";
@@ -8,9 +9,7 @@ import { useAuthProfile } from "../../hooks/useAuthProfile";
 import { useStripeOnboarding } from "../../hooks/useStripeOnboarding";
 import StripeSetupDialog from "./StripeSetupDialog";
 import CreateButton from "./CreateButton";
-import UserAvatarButton from "./UserAvatarButton";
-
-// TODO - add the profile menu
+import ProfileMenu from "./ProfileMenu"; // <-- use the dropdown you wrote
 
 export default function CustomAppBar() {
   const navigate = useNavigate();
@@ -23,6 +22,11 @@ export default function CustomAppBar() {
 
   const openStripeDialog = () => setDlgOpen(true);
 
+  // --- Profile menu actions ---
+  const goPurchases = () => navigate("/purchases");             // adjust route if different
+  const goMyCourses = () => navigate("/my-courses");            // adjust route if different
+  const goAccount = () => navigate("/account");                 // adjust route if different
+
   const handleSignOut = async () => {
     await signOut(auth);
     navigate("/");
@@ -32,7 +36,12 @@ export default function CustomAppBar() {
     <>
       <AppBar position="static" sx={{ backgroundColor: "transparent", boxShadow: "none" }}>
         <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Button disableRipple sx={{ textTransform: "none" }} onClick={() => navigate("/")}>
+          <Button
+            disableRipple
+            sx={{ textTransform: "none" }}
+            onClick={() => navigate("/")}
+            aria-label="Go to homepage"
+          >
             <Typography variant="h5" sx={{ fontWeight: "bold", color: "black" }}>
               Learn It Now
             </Typography>
@@ -50,13 +59,17 @@ export default function CustomAppBar() {
             )}
 
             {firebaseUser ? (
-              <UserAvatarButton
+              <ProfileMenu
                 photoURL={firebaseUser.photoURL}
                 displayName={firebaseUser.displayName}
-                onClick={handleSignOut}
+                onGoPurchases={goPurchases}
+                onGoMyCourses={goMyCourses}
+                onGoAccount={goAccount}
+                onSignOut={handleSignOut}
               />
             ) : (
-              // If you still want a Sign In button here (CreateButton can also trigger SignIn)
+              // If you still want a Sign In trigger here, you can render a small button/icon.
+              // CreateButton can also handle sign-in if that's your current flow.
               <></>
             )}
           </Box>
