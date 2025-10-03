@@ -1,21 +1,13 @@
 // src/pages/AcquiredCoursesPage.tsx
 import { useEffect, useRef, useState } from "react";
-import { Box, Typography } from "@mui/material";
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-  documentId,
-  getDocs,
-} from "firebase/firestore";
+import { Box } from "@mui/material";
+import { collection, onSnapshot, query, where, documentId, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import CustomAppBar from "./components/customappbar/CustomAppBar";
 import CourseGrid from "./components/CourseGrid";
 import { db, auth } from "./firebase/firebase";
 import { courseToCard } from "./components/courseMapping";
-import type { FirestoreCourse } from "./components/courseMapping";
-import type { UserDoc } from "./components/courseMapping";
+import type { FirestoreCourse, UserDoc } from "./components/courseMapping";
 import PageHeader from "./components/PageHeader";
 
 export default function AcquiredCoursesPage() {
@@ -34,7 +26,7 @@ export default function AcquiredCoursesPage() {
       return;
     }
 
-    // Subscribe to purchase IDs; fetch course docs in batches when it changes
+    // Subcollection with doc IDs = course IDs
     const purchasesRef = collection(db, "users", uid, "purchases");
     const unsub = onSnapshot(
       purchasesRef,
@@ -47,6 +39,7 @@ export default function AcquiredCoursesPage() {
           return;
         }
 
+        // Fetch those courses by ID in batches of 10
         const rows: { id: string; data: FirestoreCourse }[] = [];
         for (let i = 0; i < ids.length; i += 10) {
           const batch = ids.slice(i, i + 10);
@@ -54,7 +47,7 @@ export default function AcquiredCoursesPage() {
           s.forEach((docSnap) => rows.push({ id: docSnap.id, data: docSnap.data() as FirestoreCourse }));
         }
 
-        // collect creator uids and fetch missing profiles
+        // Fetch creator profiles for cards
         const uids = new Set(rows.map((r) => r.data.creatorUid).filter(Boolean) as string[]);
         const missing = [...uids].filter((u) => !fetchedUidsRef.current.has(u));
         for (let i = 0; i < missing.length; i += 10) {
@@ -68,7 +61,7 @@ export default function AcquiredCoursesPage() {
           if (Object.keys(updates).length) setProfiles((p) => ({ ...p, ...updates }));
         }
 
-        // map to cards (mark purchased)
+        // Sort by createdAt desc and map to course cards (purchased=true)
         rows.sort((a, b) => {
           const ta = a.data.createdAt?.toDate().getTime?.() ?? 0;
           const tb = b.data.createdAt?.toDate().getTime?.() ?? 0;
@@ -97,16 +90,13 @@ export default function AcquiredCoursesPage() {
   return (
     <Box>
       <CustomAppBar />
-      <Box sx={{ px: 3, pt: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>Acquired courses</Typography>
-        <PageHeader title="Purchases" subtitle="Courses you’ve acquired" />
-        <CourseGrid
-          items={items}
-          loading={loading}
-          emptyText="You haven’t acquired any courses yet."
-          showSignInPrompt={!uid}
-        />
-      </Box>
+      <PageHeader title="Purchases" subtitle="Courses you’ve acquired" />
+      <CourseGrid
+        items={items}
+        loading={loading}
+        emptyText="You haven’t acquired any courses yet."
+        showSignInPrompt={!uid}
+      />
     </Box>
   );
 }

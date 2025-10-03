@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { AppBar, Toolbar, Button, Box, Typography } from "@mui/material";
-import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../../firebase/firebase";
 
 import { useAuthProfile } from "../../hooks/useAuthProfile";
 import { useStripeOnboarding } from "../../hooks/useStripeOnboarding";
+import { SignIn } from "../../firebase/SignIn";
+
 import StripeSetupDialog from "./StripeSetupDialog";
 import CreateButton from "./CreateButton";
 import ProfileMenu from "./ProfileMenu";
-import { SignIn } from "../../firebase/SignIn";
 
 export default function CustomAppBar() {
   const navigate = useNavigate();
@@ -21,15 +20,6 @@ export default function CustomAppBar() {
     useStripeOnboarding({ uid: firebaseUser?.uid });
 
   const openStripeDialog = () => setDlgOpen(true);
-
-  const goPurchases = () => navigate("/purchases");
-  const goMyCourses = () => navigate("/my-courses");
-  const goAccount = () => navigate("/account");
-
-  const handleSignOut = async () => {
-    await signOut(auth);
-    navigate("/");
-  };
 
   return (
     <>
@@ -51,24 +41,21 @@ export default function CustomAppBar() {
                   loadingSignIn={loadingSignIn}
                   setLoadingSignIn={setLoadingSignIn}
                 />
+                {/* ProfileMenu now handles navigation + logout internally */}
                 <ProfileMenu
                   photoURL={firebaseUser.photoURL}
                   displayName={firebaseUser.displayName}
-                  onGoPurchases={goPurchases}
-                  onGoMyCourses={goMyCourses}
-                  onGoAccount={goAccount}
-                  onSignOut={handleSignOut}
                 />
               </>
             ) : (
-            <Button
-              variant="outlined"
-              onClick={async () => { await SignIn(); }}   // <<< call it here
-              aria-label="Sign in"
-              sx={{ textTransform: "none" }}
-            >
-              Sign in
-            </Button>
+              <Button
+                variant="outlined"
+                onClick={async () => { await SignIn(); }}
+                aria-label="Sign in"
+                sx={{ textTransform: "none" }}
+              >
+                Sign in
+              </Button>
             )}
           </Box>
         </Toolbar>

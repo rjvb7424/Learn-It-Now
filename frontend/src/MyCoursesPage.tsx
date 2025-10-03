@@ -1,15 +1,7 @@
 // src/pages/MyCoursesPage.tsx
 import { useEffect, useRef, useState } from "react";
-import { Box, Typography } from "@mui/material";
-import {
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-  documentId,
-  getDocs,
-} from "firebase/firestore";
+import { Box } from "@mui/material";
+import { collection, onSnapshot, orderBy, query, where, documentId, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import CustomAppBar from "./components/customappbar/CustomAppBar";
 import CourseGrid from "./components/CourseGrid";
@@ -33,12 +25,8 @@ export default function MyCoursesPage() {
       setLoading(false);
       return;
     }
-    const q = query(
-      collection(db, "courses"),
-      where("creatorUid", "==", uid),
-      orderBy("createdAt", "desc")
-    );
-
+    // Only courses where creatorUid === current user
+    const q = query(collection(db, "courses"), where("creatorUid", "==", uid), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
       q,
       async (snap) => {
@@ -65,9 +53,7 @@ export default function MyCoursesPage() {
         setItems(
           raw.map(({ id, data }) => {
             const prof = data.creatorUid ? profiles[data.creatorUid] : undefined;
-            const name = prof?.displayName ?? "Creator";
-            const avatar = prof?.photoURL;
-            return courseToCard(id, data, name, avatar);
+            return courseToCard(id, data, prof?.displayName ?? "Creator", prof?.photoURL);
           })
         );
         setLoading(false);
@@ -78,23 +64,19 @@ export default function MyCoursesPage() {
         setLoading(false);
       }
     );
-
     return () => unsub();
   }, [uid, profiles]);
 
   return (
     <Box>
       <CustomAppBar />
-      <Box sx={{ px: 3, pt: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>Your created courses</Typography>
-        <PageHeader title="Created Courses" subtitle="Courses you’ve authored" />
-        <CourseGrid
-          items={items}
-          loading={loading}
-          emptyText="You haven’t created any courses yet."
-          showSignInPrompt={!uid}
-        />
-      </Box>
+      <PageHeader title="Created Courses" subtitle="Courses you’ve authored" />
+      <CourseGrid
+        items={items}
+        loading={loading}
+        emptyText="You haven’t created any courses yet."
+        showSignInPrompt={!uid}
+      />
     </Box>
   );
 }
