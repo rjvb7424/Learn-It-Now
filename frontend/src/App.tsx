@@ -1,13 +1,16 @@
-// src/main.tsx (or App.tsx)
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import HomePage from "./homepage/HomePage";
 import CreatePage from "./createpage/CreatePage";
 import CoursePage from "./coursepage/CoursePage";
-import ProtectedRoute from "./components/ProtectedRoute"; // keeps auth-only for course
-import CreatorRoute from "./CreatorRoute";     // NEW: requires Stripe onboarding
+import ProtectedRoute from "./components/ProtectedRoute";
+import CreatorRoute from "./CreatorRoute";
 import { ReturnPage } from "./ReturnPage";
+import AcquiredCoursesPage from "./AcquiredCoursesPage";
+import MyCoursesPage from "./MyCoursesPage";
 
-export function RefreshPage() { return <div>Onboarding expired, retrying…</div>; }
+export function RefreshPage() {
+  return <div>Onboarding expired, retrying…</div>;
+}
 
 export default function App() {
   return (
@@ -18,7 +21,11 @@ export default function App() {
         <Route path="/return/:accountId" element={<ReturnPage />} />
         <Route path="/refresh/:accountId" element={<RefreshPage />} />
 
-        {/* Must be signed in AND Stripe-onboarded */}
+        {/* Auth-only pages */}
+        <Route path="/purchases" element={<ProtectedRoute><AcquiredCoursesPage /></ProtectedRoute>} />
+        <Route path="/my-courses" element={<ProtectedRoute><MyCoursesPage /></ProtectedRoute>} />
+
+        {/* Creator-only */}
         <Route
           path="/create"
           element={
@@ -28,7 +35,7 @@ export default function App() {
           }
         />
 
-        {/* Signed-in only (viewer/learner) */}
+        {/* Course viewing */}
         <Route
           path="/course/:courseId"
           element={

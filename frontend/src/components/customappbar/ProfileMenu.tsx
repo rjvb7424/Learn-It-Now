@@ -12,33 +12,32 @@ import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
+import { useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
+import { auth } from "../../firebase/firebase"; // adjust path if needed
 
 type Props = {
   photoURL?: string | null;
   displayName?: string | null;
-  onGoPurchases: () => void;
-  onGoMyCourses: () => void;
-  onGoAccount: () => void;
-  onSignOut: () => void;
 };
 
-export default function ProfileMenu({
-  photoURL,
-  displayName,
-  onGoPurchases,
-  onGoMyCourses,
-  onGoAccount,
-  onSignOut,
-}: Props) {
+export default function ProfileMenu({ photoURL, displayName }: Props) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  const navigate = useNavigate();
 
   const handleOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
   const handleClose = () => setAnchorEl(null);
 
-  const go = (fn: () => void) => () => {
+  const go = (path: string) => () => {
     handleClose();
-    fn();
+    navigate(path);
+  };
+
+  const handleSignOut = async () => {
+    handleClose();
+    await signOut(auth);
+    navigate("/"); // back to home after logout
   };
 
   return (
@@ -61,24 +60,24 @@ export default function ProfileMenu({
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <MenuItem onClick={go(onGoPurchases)}>
+        <MenuItem onClick={go("/purchases")}>
           <ListItemIcon><LibraryBooksIcon fontSize="small" /></ListItemIcon>
           <ListItemText>Acquired courses</ListItemText>
         </MenuItem>
 
-        <MenuItem onClick={go(onGoMyCourses)}>
+        <MenuItem onClick={go("/my-courses")}>
           <ListItemIcon><EditNoteIcon fontSize="small" /></ListItemIcon>
           <ListItemText>Edit created courses</ListItemText>
         </MenuItem>
 
-        <MenuItem onClick={go(onGoAccount)}>
+        <MenuItem onClick={go("/account")}>
           <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
           <ListItemText>Account settings</ListItemText>
         </MenuItem>
 
         <Divider />
 
-        <MenuItem onClick={go(onSignOut)}>
+        <MenuItem onClick={handleSignOut}>
           <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
           <ListItemText>Log out</ListItemText>
         </MenuItem>
