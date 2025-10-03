@@ -16,6 +16,7 @@ import { db, auth } from "./firebase/firebase";
 import { courseToCard } from "./components/courseMapping";
 import type { FirestoreCourse } from "./components/courseMapping";
 import type { UserDoc } from "./components/courseMapping";
+import PageHeader from "./components/PageHeader";
 
 export default function AcquiredCoursesPage() {
   const [uid, setUid] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export default function AcquiredCoursesPage() {
       <CustomAppBar />
       <Box sx={{ px: 3, pt: 3 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>Acquired courses</Typography>
+        <PageHeader title="Purchases" subtitle="Courses you’ve acquired" />
         <CourseGrid
           items={items}
           loading={loading}

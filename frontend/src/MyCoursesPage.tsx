@@ -16,6 +16,7 @@ import CourseGrid from "./components/CourseGrid";
 import { db, auth } from "./firebase/firebase";
 import { courseToCard } from "./components/courseMapping";
 import type { FirestoreCourse, UserDoc } from "./components/courseMapping";
+import PageHeader from "./components/PageHeader";
 
 export default function MyCoursesPage() {
   const [uid, setUid] = useState<string | null>(null);
@@ -86,6 +87,7 @@ export default function MyCoursesPage() {
       <CustomAppBar />
       <Box sx={{ px: 3, pt: 3 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>Your created courses</Typography>
+        <PageHeader title="Created Courses" subtitle="Courses you’ve authored" />
         <CourseGrid
           items={items}
           loading={loading}
