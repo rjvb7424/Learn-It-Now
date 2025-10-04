@@ -2,10 +2,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "./firebase/firebase";
+import { auth } from "./firebase/firebase"; // 👈 fix relative path
 import { Box, CircularProgress, Typography } from "@mui/material";
 
-const FINALIZE_CHECKOUT_URL = "https://finalizecheckout-<your-id>-uc.a.run.app";
+// Prefer an env var so you don't rebuild when the URL changes
+// .env: VITE_FINALIZE_CHECKOUT_URL=https://finalizecheckout-xxxxxxxx-uc.a.run.app
+const FINALIZE_CHECKOUT_URL = "https://finalizecheckout-5rf4ii6yvq-uc.a.run.app"
 
 export default function CheckoutSuccess() {
   const [params] = useSearchParams();
@@ -13,7 +15,7 @@ export default function CheckoutSuccess() {
   const [uid, setUid] = useState<string | null>(null);
 
   const sessionId = params.get("session_id");
-  const courseId = params.get("course"); // sent in success_url
+  const courseId = params.get("course"); // extra helper in success_url
 
   useEffect(() => onAuthStateChanged(auth, (u) => setUid(u?.uid ?? null)), []);
 
@@ -26,11 +28,16 @@ export default function CheckoutSuccess() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid, sessionId }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "Finalize failed");
-        // Go to the course reader
-        navigate(`/course/${courseId || data.courseId}`, { replace: true });
-      } catch {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          console.error("finalizeCheckout error:", data);
+          throw new Error(data?.error || "Finalize failed");
+        }
+        // Server wrote: users/{uid}/purchases/{courseId}
+        const dest = courseId || data.courseId;
+        navigate(`/course/${dest}`, { replace: true });
+      } catch (e) {
+        console.error("Finalize failed", e);
         navigate(`/purchases?error=finalize_failed`, { replace: true });
       }
     })();

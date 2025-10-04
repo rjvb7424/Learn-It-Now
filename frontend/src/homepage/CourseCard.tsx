@@ -28,7 +28,7 @@ type CourseCardProps = {
   title?: string;
   description?: string;
   price?: number;
-  onAcquire?: (payload: AcquirePayload) => void; // paid path
+  onAcquire?: (payload: AcquirePayload) => void | Promise<void>; // paid path
   onOpenCourse?: (courseId: string) => void;     // navigate to reader
   purchased?: boolean;                            // optional override from parent
 };
@@ -100,7 +100,7 @@ export default function CourseCard({
     }
   };
 
-  const handleDialogPrimary = () => {
+  const handleDialogPrimary = async () => {
     if (!user) return; // sign-in panel guards this
     if (purchased) {
       setOpen(false);
@@ -114,6 +114,14 @@ export default function CourseCard({
     // paid
     onAcquire?.({ title, price: Number(price) || 0, description, courseId });
     setOpen(false);
+    try {
+      await onAcquire?.({ title, price: Number(price) || 0, description, courseId });
+      // if onAcquire redirects, this won’t run; if it throws, we keep dialog open
+      setOpen(false);
+    } catch (e) {
+      console.error(e);
+     // keep dialog open so the user can retry or see the error
+    }
   };
 
   return (

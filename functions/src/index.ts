@@ -1,10 +1,9 @@
 import Stripe from "stripe";
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-
-initializeApp();
+export { createCheckout, finalizeCheckout } from "./checkout";
+import "./adminInit";
 
 const STRIPE_SECRET = defineSecret("STRIPE_SECRET");
 const stripe = () => new Stripe(STRIPE_SECRET.value(), { apiVersion: "2025-08-27.basil" });

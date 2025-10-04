@@ -3,10 +3,8 @@ import Stripe from "stripe";
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
-import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-
-initializeApp();
+import "./adminInit";
 
 const STRIPE_SECRET = defineSecret("STRIPE_SECRET");
 const stripe = () => new Stripe(STRIPE_SECRET.value(), { apiVersion: "2025-08-27.basil" });
