@@ -1,4 +1,4 @@
-// src/pages/HomePage.tsx
+// src/homepage/HomePage.tsx  (your file path uses 'homepage', keep as-is)
 import { useEffect, useRef, useState } from "react";
 import { Box } from "@mui/material";
 import {
@@ -11,6 +11,7 @@ import { db, auth } from "../firebase/firebase";
 import { courseToCard } from "../components/courseMapping";
 import type { FirestoreCourse, UserDoc } from "../components/courseMapping";
 import PageHeader from "../components/PageHeader";
+import { useCourseCheckout } from "../hooks/useCourseCheckout";
 
 export default function HomePage() {
   const [items, setItems] = useState<ReturnType<typeof courseToCard>[]>([]);
@@ -18,11 +19,15 @@ export default function HomePage() {
   const [purchasedIds, setPurchasedIds] = useState<Set<string>>(new Set());
   const [profiles, setProfiles] = useState<Record<string, UserDoc>>({});
   const fetchedUidsRef = useRef<Set<string>>(new Set());
+  const [uid, setUid] = useState<string | null>(null);
 
-  // Subscribe to purchases: users/{uid}/purchases/{courseId}
+  const { startCheckout } = useCourseCheckout(uid);
+
+  // auth + purchases subscription
   useEffect(() => {
     let unsubPurchases: (() => void) | undefined;
     const unsubAuth = onAuthStateChanged(auth, (u) => {
+      setUid(u?.uid ?? null);
       unsubPurchases?.();
       if (!u) {
         setPurchasedIds(new Set());
@@ -31,7 +36,7 @@ export default function HomePage() {
       const ref = collection(db, "users", u.uid, "purchases");
       unsubPurchases = onSnapshot(ref, (snap) => {
         const ids = new Set<string>();
-        snap.forEach((d) => ids.add(d.id)); // d.id === courseId
+        snap.forEach((d) => ids.add(d.id));
         setPurchasedIds(ids);
       });
     });
@@ -41,14 +46,13 @@ export default function HomePage() {
     };
   }, []);
 
-  // Load ALL courses; authorship shown via creatorUid profile, purchase badge via purchasedIds
+  // Load all courses + creator profiles
   useEffect(() => {
     const q = query(collection(db, "courses"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
       q,
       async (snap) => {
         setLoading(true);
-        // collect creator UIDs to fetch profiles
         const uids = new Set<string>();
         const raw = snap.docs.map((d) => {
           const data = d.data() as FirestoreCourse;
@@ -56,7 +60,7 @@ export default function HomePage() {
           return { id: d.id, data };
         });
 
-        // fetch missing profiles in batches of 10
+        // fetch missing profiles in small batches
         const missing = [...uids].filter((u) => !fetchedUidsRef.current.has(u));
         for (let i = 0; i < missing.length; i += 10) {
           const batch = missing.slice(i, i + 10);
@@ -92,12 +96,16 @@ export default function HomePage() {
     <Box>
       <Box sx={{ position: "relative" }}>
         <CustomAppBar />
-        <Box sx={{ position: "absolute", top: 11, left: "50%", transform: "translateX(-50%)", zIndex: (t) => t.zIndex.appBar + 1 }}>
-        </Box>
+        <Box sx={{ position: "absolute", top: 11, left: "50%", transform: "translateX(-50%)", zIndex: (t) => t.zIndex.appBar + 1 }} />
       </Box>
+
       <PageHeader title="Home Page" subtitle="Browse all available courses in our platform!" />
 
-      <CourseGrid items={items} loading={loading} />
+      <CourseGrid
+        items={items}
+        loading={loading}
+        onAcquire={({ courseId }) => startCheckout(courseId)}  // ✅ paid path
+      />
     </Box>
   );
 }
