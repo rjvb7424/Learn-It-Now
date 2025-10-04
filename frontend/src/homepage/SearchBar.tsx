@@ -14,7 +14,7 @@ export default function SearchBar({ onSearch }: Props) {
         width: 1,
         // IMPORTANT: allow the TextField to actually shrink inside flex/grid parents
         minWidth: 0,
-        maxWidth: 600,
+        maxWidth: 500,
       }}
     >
       <TextField
