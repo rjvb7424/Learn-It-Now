@@ -1,6 +1,6 @@
 // src/createpage/CreatePage.tsx
 import { useMemo, useState } from "react";
-import { Box, Container, Typography } from "@mui/material";
+import { Box, Container } from "@mui/material";
 import CustomAppBar from "../components/customappbar/CustomAppBar";
 import DetailsSection from "./components/DetailsSection";
 import ContentSection from "./components/ContentSection";
@@ -12,6 +12,7 @@ import type { Errors } from "./Types";
 // 👇 Firestore + Auth
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase/firebase";
+import PageHeader from "../components/PageHeader";
 
 export default function CreatePage() {
   const [title, setTitle] = useState("");
@@ -105,11 +106,9 @@ export default function CreatePage() {
 
   return (
     <Box>
-      <CustomAppBar />
+      <CustomAppBar showSearch={false} />
       <Container>
-        <Typography variant="h4" sx={{ mb: 2 }}>
-          Create Course
-        </Typography>
+        <PageHeader title="Create a New Course Page" subtitle="Fill in the details below to create your very own course!" />
 
         <DetailsSection
           title={title}
