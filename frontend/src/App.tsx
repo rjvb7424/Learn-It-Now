@@ -5,7 +5,7 @@ import CoursePage from "./coursepage/CoursePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CreatorRoute from "./CreatorRoute";
 import { ReturnPage } from "./ReturnPage";
-import AcquiredCoursesPage from "./AcquiredCoursesPage";
+import AcquiredCoursesPage from "./PurchasesPage";
 import MyCoursesPage from "./MyCoursesPage";
 
 export function RefreshPage() {
