@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Box, Button, Card, CardContent, Container, Typography } from "@mui/material";
 import { auth, db } from "../firebase/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore"; // ⬅️ remove updateDoc
+import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import CustomAppBar from "../components/customappbar/CustomAppBar";
 
 type Lesson = { title: string; content: string };
@@ -22,18 +22,18 @@ export default function CoursePage() {
   const [userUid, setUserUid] = useState<string | null>(null);
   const [course, setCourse] = useState<CourseDoc | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [resolvedIndex, setResolvedIndex] = useState(false); // ✅ gate initial render
 
   // auth
-  useEffect(
-    () =>
-      onAuthStateChanged(auth, (u) => {
-        if (!u) navigate("/");
-        else setUserUid(u.uid);
-      }),
-    [navigate]
-  );
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (!u) navigate("/");
+      else setUserUid(u.uid);
+    });
+    return () => unsub();
+  }, [navigate]);
 
-  // load course
+  // live course doc
   useEffect(() => {
     if (!courseId) return;
     const ref = doc(db, "courses", courseId);
@@ -50,20 +50,27 @@ export default function CoursePage() {
   // Memoize lessons to satisfy exhaustive-deps
   const lessons = useMemo<Lesson[]>(() => course?.lessons ?? [], [course]);
 
-  // load progress
+  // Load and clamp progress ONCE we know lessons.length
   useEffect(() => {
     (async () => {
       if (!userUid || !courseId) return;
+      if (lessons.length === 0) return; // wait until course (and lessons) loaded
+
       const pref = doc(db, "users", userUid, "purchases", courseId);
       const psnap = await getDoc(pref);
       if (!psnap.exists()) {
         navigate("/");
         return;
       }
+
       const idx =
-        typeof psnap.data()?.currentLessonIndex === "number" ? psnap.data()!.currentLessonIndex : 0;
+        typeof psnap.data()?.currentLessonIndex === "number"
+          ? psnap.data()!.currentLessonIndex
+          : 0;
+
       const clamped = Math.max(0, Math.min(idx, Math.max(0, lessons.length - 1)));
       setCurrentIndex(clamped);
+      setResolvedIndex(true); // ✅ now we can render the lesson
     })();
   }, [userUid, courseId, lessons.length, navigate]);
 
@@ -75,11 +82,15 @@ export default function CoursePage() {
 
   const current = useMemo(() => lessons[currentIndex] ?? null, [lessons, currentIndex]);
 
-  if (!course || !current) {
+  // ✅ Do not render the lesson view until both course and progress index are ready
+  if (!course || !resolvedIndex || !current) {
     return (
-      <Container sx={{ py: 4 }}>
-        <Typography variant="body2">Loading course…</Typography>
-      </Container>
+      <Box>
+        <CustomAppBar showSearch={false} />
+        <Container sx={{ py: 4 }}>
+          <Typography variant="body2">Loading course…</Typography>
+        </Container>
+      </Box>
     );
   }
 
@@ -90,7 +101,7 @@ export default function CoursePage() {
   };
 
   const onPrevious = async () => {
-    const previous = Math.min(currentIndex - 1, lessons.length + 1);
+    const previous = Math.max(currentIndex - 1, 0); // ✅ fixed clamp
     setCurrentIndex(previous);
     await saveProgress(previous);
   };
@@ -98,34 +109,34 @@ export default function CoursePage() {
   return (
     <Box>
       <CustomAppBar showSearch={false} />
-    <Container sx={{ py: 4 }}>
-      <Typography variant="h4" sx={{ mb: 1 }}>
-        {course.title ?? "Course"}
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Lesson {currentIndex + 1} of {lessons.length}
-      </Typography>
+      <Container sx={{ py: 4 }}>
+        <Typography variant="h4" sx={{ mb: 1 }}>
+          {course.title ?? "Course"}
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          Lesson {currentIndex + 1} of {lessons.length}
+        </Typography>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h5" sx={{ mb: 1 }}>
-            {current.title}
-          </Typography>
-          <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-            {current.content}
-          </Typography>
-        </CardContent>
-      </Card>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h5" sx={{ mb: 1 }}>
+              {current.title}
+            </Typography>
+            <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+              {current.content}
+            </Typography>
+          </CardContent>
+        </Card>
 
-      <Box sx={{ display: "flex", gap: 2 }}>
-        <Button variant="outlined" disabled={currentIndex === lessons.length - 1} onClick={onNext}>
-          Next Lesson
-        </Button>
-        <Button variant="outlined" disabled={currentIndex === 0} onClick={onPrevious}>
-          Previous Lesson
-        </Button>
-      </Box>
-    </Container>
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <Button variant="outlined" disabled={currentIndex === lessons.length - 1} onClick={onNext}>
+            Next Lesson
+          </Button>
+          <Button variant="outlined" disabled={currentIndex === 0} onClick={onPrevious}>
+            Previous Lesson
+          </Button>
+        </Box>
+      </Container>
     </Box>
   );
 }
