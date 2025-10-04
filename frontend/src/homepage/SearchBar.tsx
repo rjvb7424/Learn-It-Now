@@ -9,7 +9,14 @@ export default function SearchBar({ onSearch }: Props) {
   const [value, setValue] = useState("");
 
   return (
-    <Box sx={{ width: "min(500px, calc(100vw - 32px))" }}>
+    <Box
+      sx={{
+        width: 1,
+        // IMPORTANT: allow the TextField to actually shrink inside flex/grid parents
+        minWidth: 0,
+        maxWidth: 600,
+      }}
+    >
       <TextField
         placeholder="Search..."
         variant="outlined"
@@ -21,8 +28,10 @@ export default function SearchBar({ onSearch }: Props) {
           if (e.key === "Enter") onSearch?.(value.trim());
         }}
         sx={{
-          backgroundColor: "white",
+          bgcolor: "white",
           borderRadius: 2,
+          // keep height reasonable as we scale down
+          "& .MuiInputBase-input": { py: 1.1 },
         }}
       />
     </Box>

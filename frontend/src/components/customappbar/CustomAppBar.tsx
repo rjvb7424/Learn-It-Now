@@ -1,3 +1,4 @@
+// src/components/customappbar/CustomAppBar.tsx
 import { useState } from "react";
 import { AppBar, Toolbar, Button, Box, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +10,7 @@ import { SignIn } from "../../firebase/SignIn";
 import StripeSetupDialog from "./StripeSetupDialog";
 import CreateButton from "./CreateButton";
 import ProfileMenu from "./ProfileMenu";
+import SearchBar from "../../homepage/SearchBar";
 
 export default function CustomAppBar() {
   const navigate = useNavigate();
@@ -24,14 +26,47 @@ export default function CustomAppBar() {
   return (
     <>
       <AppBar position="static" sx={{ backgroundColor: "transparent", boxShadow: "none" }}>
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Button disableRipple sx={{ textTransform: "none" }} onClick={() => navigate("/")}>
+        <Toolbar
+          sx={{
+            gap: 1.5,
+            flexWrap: { xs: "wrap", sm: "nowrap" },   // 👈 wrap on small screens
+            alignItems: "center",
+          }}
+        >
+          {/* Left: logo */}
+          <Button
+            disableRipple
+            onClick={() => navigate("/")}
+            sx={{ textTransform: "none", flex: "0 0 auto", order: { xs: 1, sm: 1 } }}
+          >
             <Typography variant="h5" sx={{ fontWeight: "bold", color: "black" }}>
               Learn It Now
             </Typography>
           </Button>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          {/* Middle: search — expands & shrinks, full width on phones */}
+          <Box
+            sx={{
+              order: { xs: 3, sm: 2 },
+              flex: { xs: "1 1 100%", sm: "1 1 320px" }, // grow/shrink
+              minWidth: { xs: "100%", sm: 240 },
+              display: "flex",
+              justifyContent: { xs: "stretch", sm: "center" },
+            }}
+          >
+            <SearchBar onSearch={(q) => navigate(q ? `/?q=${encodeURIComponent(q)}` : "/")} />
+          </Box>
+
+          {/* Right: actions — don’t shrink */}
+          <Box
+            sx={{
+              order: { xs: 2, sm: 3 },
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              flexShrink: 0, // 👈 prevent squashing
+            }}
+          >
             {firebaseUser ? (
               <>
                 <CreateButton
@@ -41,7 +76,6 @@ export default function CustomAppBar() {
                   loadingSignIn={loadingSignIn}
                   setLoadingSignIn={setLoadingSignIn}
                 />
-                {/* ProfileMenu now handles navigation + logout internally */}
                 <ProfileMenu
                   photoURL={firebaseUser.photoURL}
                   displayName={firebaseUser.displayName}

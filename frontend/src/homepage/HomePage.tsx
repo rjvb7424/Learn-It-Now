@@ -6,7 +6,6 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import CustomAppBar from "../components/customappbar/CustomAppBar";
-import SearchOverlay from "./SearchBar";
 import CourseGrid from "../components/CourseGrid";
 import { db, auth } from "../firebase/firebase";
 import { courseToCard } from "../components/courseMapping";
@@ -94,7 +93,6 @@ export default function HomePage() {
       <Box sx={{ position: "relative" }}>
         <CustomAppBar />
         <Box sx={{ position: "absolute", top: 11, left: "50%", transform: "translateX(-50%)", zIndex: (t) => t.zIndex.appBar + 1 }}>
-          <SearchOverlay onSearch={(q) => q && console.log("search:", q)} />
         </Box>
       </Box>
       <PageHeader title="Home Page" subtitle="Browse all available courses in our platform!" />
