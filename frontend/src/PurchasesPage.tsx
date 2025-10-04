@@ -127,7 +127,7 @@ export default function AcquiredCoursesPage() {
   return (
     <Box>
       <CustomAppBar />
-      <PageHeader title="Purchases" subtitle="Courses you’ve acquired" />
+      <PageHeader title="Purchases Page" subtitle="A list of all the courses you have acquired!" />
       <CourseGrid
         items={items}
         loading={loading}

@@ -11,6 +11,7 @@ import CourseGrid from "../components/CourseGrid";
 import { db, auth } from "../firebase/firebase";
 import { courseToCard } from "../components/courseMapping";
 import type { FirestoreCourse, UserDoc } from "../components/courseMapping";
+import PageHeader from "../components/PageHeader";
 
 export default function HomePage() {
   const [items, setItems] = useState<ReturnType<typeof courseToCard>[]>([]);
@@ -96,6 +97,7 @@ export default function HomePage() {
           <SearchOverlay onSearch={(q) => q && console.log("search:", q)} />
         </Box>
       </Box>
+      <PageHeader title="Home Page" subtitle="Browse all available courses in our platform!" />
 
       <CourseGrid items={items} loading={loading} />
     </Box>
