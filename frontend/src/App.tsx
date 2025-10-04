@@ -6,7 +6,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import CreatorRoute from "./CreatorRoute";
 import { ReturnPage } from "./ReturnPage";
 import AcquiredCoursesPage from "./PurchasesPage";
-import MyCoursesPage from "./MyCoursesPage";
+import MyCoursesPage from "./CreatedCoursesPage";
 
 export function RefreshPage() {
   return <div>Onboarding expired, retrying…</div>;
