@@ -89,9 +89,15 @@ export default function CoursePage() {
     await saveProgress(next);
   };
 
+  const onPrevious = async () => {
+    const previous = Math.min(currentIndex - 1, lessons.length + 1);
+    setCurrentIndex(previous);
+    await saveProgress(previous);
+  };
+
   return (
     <Box>
-        <CustomAppBar />
+      <CustomAppBar showSearch={false} />
     <Container sx={{ py: 4 }}>
       <Typography variant="h4" sx={{ mb: 1 }}>
         {course.title ?? "Course"}
@@ -115,8 +121,8 @@ export default function CoursePage() {
         <Button variant="outlined" disabled={currentIndex === lessons.length - 1} onClick={onNext}>
           Next Lesson
         </Button>
-        <Button variant="text" onClick={() => navigate("/")}>
-          Back to Catalog
+        <Button variant="outlined" disabled={currentIndex === 0} onClick={onPrevious}>
+          Previous Lesson
         </Button>
       </Box>
     </Container>

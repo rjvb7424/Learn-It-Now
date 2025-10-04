@@ -10,7 +10,6 @@ import {
 } from "@mui/material";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import EditNoteIcon from "@mui/icons-material/EditNote";
-import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
@@ -68,11 +67,6 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
         <MenuItem onClick={go("/my-courses")}>
           <ListItemIcon><EditNoteIcon fontSize="small" /></ListItemIcon>
           <ListItemText>Edit created courses</ListItemText>
-        </MenuItem>
-
-        <MenuItem onClick={go("/account")}>
-          <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>Account settings</ListItemText>
         </MenuItem>
 
         <Divider />

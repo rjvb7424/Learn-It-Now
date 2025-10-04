@@ -137,7 +137,7 @@ export default function CourseCard({
           <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>{title}</Typography>
           <Typography variant="body2" color="text.secondary" sx={clamp(3)}>{description}</Typography>
         </CardContent>
-        <CardActions disableSpacing sx={{ px: 2, pt: 0, pb: 2, display: "flex", justifyContent: "flex-end" }}>
+        <CardActions disableSpacing sx={{ px: 2, pt: 0, pb: 2, display: "flex", justifyContent: "flex-start" }}>
           <Button size="small" variant="contained" onClick={handlePrimaryButton}>
             Learn It Now
           </Button>
