@@ -1,3 +1,4 @@
+// src/components/PricingPublishSection.tsx
 import {
   Alert,
   Box,
@@ -25,6 +26,8 @@ type Props = {
   onReset: VoidFunction;
 };
 
+const MIN_PRICE_EUR = 2; // 👈 hard-coded minimum
+
 export default function PricingPublishSection({
   isFree,
   price,
@@ -43,9 +46,12 @@ export default function PricingPublishSection({
     if (!Number.isFinite(num) || num < 0) return setPrice("0");
 
     num = Math.min(num, LIMITS.maxPrice);
-    const fixed = Math.floor(num * 10) / 10; // 1 decimal place
+    const fixed = Math.floor(num * 10) / 10; // keep 1 decimal place like before
     setPrice(fixed.toString());
   };
+
+  const priceNum = parseFloat(price || "0");
+  const tooLow = !isFree && priceNum < MIN_PRICE_EUR;
 
   return (
     <Card>
@@ -71,13 +77,24 @@ export default function PricingPublishSection({
 
           {!isFree && (
             <TextField
-              label={`Price in EUR (Required)`}
+              label="Price in EUR (Required)"
               fullWidth
               value={price}
               onChange={onPriceChange}
+              onBlur={() => {
+                // optional: bump up to the minimum on blur
+                if (priceNum > 0 && priceNum < MIN_PRICE_EUR) {
+                  setPrice(MIN_PRICE_EUR.toFixed(1)); // keep your 1-decimal style
+                }
+              }}
               type="number"
-              inputProps={{ min: 0, max: LIMITS.maxPrice, step: 0.1 }}
-              helperText={`Enter a valid price between 0 and ${LIMITS.maxPrice}€`}
+              inputProps={{ min: MIN_PRICE_EUR, max: LIMITS.maxPrice, step: 0.1 }}
+              helperText={
+                tooLow
+                  ? `Minimum price is €${MIN_PRICE_EUR.toFixed(2)}.`
+                  : `Enter a price between €${MIN_PRICE_EUR.toFixed(2)} and €${LIMITS.maxPrice}.`
+              }
+              error={tooLow}
             />
           )}
 
@@ -90,7 +107,12 @@ export default function PricingPublishSection({
           )}
 
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-            <Button variant="contained" size="large" onClick={onPublish} disabled={!canPublish}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={onPublish}
+              disabled={!canPublish || tooLow}
+            >
               Publish Course
             </Button>
             <Button variant="outlined" size="large" onClick={onReset}>

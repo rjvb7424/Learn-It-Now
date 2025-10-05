@@ -10,6 +10,8 @@ const STRIPE_SECRET = defineSecret("STRIPE_SECRET");
 // ✅ pin a real API version
 const stripe = () => new Stripe(STRIPE_SECRET.value());
 
+const MIN_PRICE_EUR_CENTS = 200;
+
 const isValidUrl = (u?: string | null) => { try { new URL(String(u)); return true; } catch { return false; } };
 const normalizeOrigin = (raw?: string) => {
   const fallback = "http://localhost:5173";
@@ -55,6 +57,13 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
     // ---------- Pricing (EUR) ----------
     const currency = "eur";
     const baseAmount = cents(course.price!);            // course price in cents
+
+    // 🚫 Enforce the €2 minimum
+    if (baseAmount < MIN_PRICE_EUR_CENTS) {
+      res.status(400).json({ error: "Minimum course price is €2.00." });
+      return;
+    }
+
     const platformFee = Math.round(baseAmount * 0.20);  // 20% fee (rounded)
     const totalAmount = baseAmount + platformFee;       // what the buyer pays (before Stripe fees)
 
@@ -173,4 +182,3 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
     res.status(500).json({ error: err?.message || "Unknown error" });
   }
 });
-

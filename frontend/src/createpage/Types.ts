@@ -17,7 +17,7 @@ export const LIMITS: Limits = {
   description: 180,
   lessonTitle: 50,
   lessonContent: 500,
-  maxLessons: 5,
+  maxLessons: 8,
   maxPrice: 100,
 };
 
