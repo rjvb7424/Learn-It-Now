@@ -7,7 +7,8 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import "./adminInit";
 
 const STRIPE_SECRET = defineSecret("STRIPE_SECRET");
-const stripe = () => new Stripe(STRIPE_SECRET.value(), { apiVersion: "2025-08-27.basil" });
+// ✅ pin a real API version
+const stripe = () => new Stripe(STRIPE_SECRET.value());
 
 const isValidUrl = (u?: string | null) => { try { new URL(String(u)); return true; } catch { return false; } };
 const normalizeOrigin = (raw?: string) => {
@@ -19,11 +20,6 @@ const normalizeOrigin = (raw?: string) => {
 const buildUrl = (origin: string, path: string) => new URL(path, origin).toString();
 const cents = (n: number) => Math.max(0, Math.round(Number(n) * 100));
 
-/**
- * POST /createCheckout
- * Body: { uid: string, courseId: string, origin?: string }
- * Creates a Checkout Session that pays the creator (destination charge).
- */
 export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res): Promise<void> => {
   try {
     const { uid, courseId, origin: originFromClient } =
@@ -37,10 +33,12 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
     // Load course (server-trusted)
     const courseSnap = await db.doc(`courses/${courseId}`).get();
     if (!courseSnap.exists) { res.status(404).json({ error: "Course not found" }); return; }
-    const course = courseSnap.data() as { title?: string; description?: string; price?: number; isFree?: boolean; creatorUid?: string };
+    const course = courseSnap.data() as {
+      title?: string; description?: string; price?: number; isFree?: boolean; creatorUid?: string
+    };
 
-    if (!course.creatorUid)                        { res.status(400).json({ error: "Course missing creatorUid" }); return; }
-    if (course.isFree || !(course.price! > 0))     { res.status(400).json({ error: "Course is free" }); return; }
+    if (!course.creatorUid)                    { res.status(400).json({ error: "Course missing creatorUid" }); return; }
+    if (course.isFree || !(course.price! > 0)) { res.status(400).json({ error: "Course is free" }); return; }
 
     // Load creator's connected account
     const creatorSnap = await db.doc(`users/${course.creatorUid}`).get();
@@ -54,34 +52,56 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
     const success_url = buildUrl(origin, `/checkout/success?course=${encodeURIComponent(courseId)}&session_id={CHECKOUT_SESSION_ID}`);
     const cancel_url  = buildUrl(origin, `/?canceled=1`);
 
-    const amount   = cents(course.price!);
-    const currency = "eur"; // change to "gbp"/"usd" if you prefer
-    const platformFee = 0;  // set >0 (in cents) if/when you take a fee
+    // ---------- Pricing (EUR) ----------
+    const currency = "eur";
+    const baseAmount = cents(course.price!);            // course price in cents
+    const platformFee = Math.round(baseAmount * 0.20);  // 20% fee (rounded)
+    const totalAmount = baseAmount + platformFee;       // what the buyer pays (before Stripe fees)
 
+    // Create Checkout Session with two line items (course + fee)
     const session = await stripe().checkout.sessions.create({
       mode: "payment",
       success_url,
       cancel_url,
-      line_items: [{
-        quantity: 1,
-        price_data: {
-          currency,
-          unit_amount: amount,
-          product_data: {
-            name: course.title || "Course",
-            description: (course.description || "").slice(0, 500),
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: baseAmount,
+            product_data: {
+              name: course.title || "Course",
+              description: (course.description || "").slice(0, 500),
+            },
           },
         },
-      }],
+        {
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: platformFee,
+            product_data: {
+              name: "Service fee (20%)",
+              description: "Platform service fee",
+            },
+          },
+        },
+      ],
       payment_intent_data: {
+        // Send funds to creator (destination charge)
         transfer_data: { destination: creator.stripeAccountId! },
-        ...(platformFee > 0 ? { application_fee_amount: platformFee } : {}),
+
+        // Your platform keeps the 20% fee
+        application_fee_amount: platformFee,
+
+        // Recommended: bill fees & descriptor on behalf of creator
+        on_behalf_of: creator.stripeAccountId!,
         metadata: { uid, courseId },
       },
       metadata: { uid, courseId },
     });
 
-    res.json({ url: session.url, id: session.id });
+    res.json({ url: session.url, id: session.id, totalAmount });
   } catch (err: any) {
     try { logger.error("createCheckout", JSON.stringify(err, Object.getOwnPropertyNames(err))); }
     catch { logger.error("createCheckout", err); }
@@ -89,11 +109,6 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
   }
 });
 
-/**
- * POST /finalizeCheckout
- * Body: { uid: string, sessionId: string }
- * Server verifies the session is paid, then grants access in Firestore.
- */
 export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res): Promise<void> => {
   try {
     const { uid, sessionId } = (req.body ?? {}) as { uid?: string; sessionId?: string };
@@ -102,7 +117,6 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
 
     const s = stripe();
     const session = await s.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] });
-
     if (!session || session.mode !== "payment") { res.status(400).json({ error: "Invalid session" }); return; }
 
     const pi = typeof session.payment_intent === "string"
@@ -114,25 +128,44 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
 
     const courseId = (session.metadata?.courseId || (pi?.metadata as any)?.courseId) as string | undefined;
     const metaUid  = (session.metadata?.uid || (pi?.metadata as any)?.uid) as string | undefined;
-
     if (!courseId || !metaUid || metaUid !== uid) {
       res.status(400).json({ error: "Metadata missing or UID mismatch" });
       return;
     }
 
-    // Optional: verify amount matches current course price
     const db = getFirestore();
     const courseSnap = await db.doc(`courses/${courseId}`).get();
+
+    // Optional integrity check: expected total = base + 20% fee
     if (courseSnap.exists && session.amount_total != null) {
-      const expected = cents((courseSnap.data() as any)?.price ?? 0);
-      if (expected !== session.amount_total) {
-        logger.warn("Amount mismatch on finalize", { expected, got: session.amount_total, courseId, sessionId });
+      const base = cents((courseSnap.data() as any)?.price ?? 0);
+      const fee  = Math.round(base * 0.20);
+      const expectedTotal = base + fee;
+      if (expectedTotal !== session.amount_total) {
+        logger.warn("Amount mismatch on finalize", {
+          expectedTotal, got: session.amount_total, courseId, sessionId
+        });
       }
     }
 
-    // Idempotent grant
+    // Persist purchase with amounts for your dashboard
+    const totalCents = session.amount_total ?? 0;
+    const feeCents   = typeof pi?.application_fee_amount === "number" ? pi.application_fee_amount : 0;
+    const currency   = (session.currency || "eur").toUpperCase();
+
     await db.doc(`users/${uid}/purchases/${courseId}`).set(
-      { acquiredAt: FieldValue.serverTimestamp(), currentLessonIndex: 0 },
+      {
+        acquiredAt: FieldValue.serverTimestamp(),
+        currentLessonIndex: 0,
+        amount: totalCents / 100,               // buyer paid (course + fee)
+        platformFee: feeCents / 100,            // your cut
+        creatorGross: (totalCents - feeCents) / 100, // before Stripe processing fees
+        currency,
+        stripe: {
+          sessionId: session.id,
+          paymentIntentId: typeof pi === "string" ? pi : pi?.id,
+        },
+      },
       { merge: true }
     );
 
@@ -143,3 +176,4 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
     res.status(500).json({ error: err?.message || "Unknown error" });
   }
 });
+

@@ -6,7 +6,7 @@ export { createCheckout, finalizeCheckout } from "./checkout";
 import "./adminInit";
 
 const STRIPE_SECRET = defineSecret("STRIPE_SECRET");
-const stripe = () => new Stripe(STRIPE_SECRET.value(), { apiVersion: "2025-08-27.basil" });
+const stripe = () => new Stripe(STRIPE_SECRET.value());
 
 /** build absolute URLs from origin */
 const isValidUrl = (u?: string | null) => { try { new URL(String(u)); return true; } catch { return false; } };
@@ -108,3 +108,51 @@ export const createAccountLink = onRequest({ secrets: [STRIPE_SECRET], cors: tru
     res.status(500).json({ error: err?.message || "Unknown error" });
   }
 });
+
+// NEW: create a one-time login link for the creator's Express dashboard
+export const createStripeLoginLink = onRequest(
+  { secrets: [STRIPE_SECRET], cors: true },
+  async (req, res): Promise<void> => {
+    try {
+      const { uid, accountId: bodyId, origin: originFromClient } =
+        (req.body ?? {}) as { uid?: string; accountId?: string; origin?: string };
+
+      if (!uid && !bodyId) {
+        res.status(400).json({ error: "Missing uid or accountId" });
+        return;
+      }
+
+      const db = getFirestore();
+      let accountId = bodyId;
+
+      // look up account from users/{uid} if not provided
+      if (!accountId && uid) {
+        const snap = await db.doc(`users/${uid}`).get();
+        accountId = snap.data()?.stripeAccountId;
+        if (!accountId) {
+          res.status(404).json({ error: "No Stripe account for user" });
+          return;
+        }
+      }
+
+      // optional: verify uid ↔ account when both provided
+      if (uid && accountId) {
+        const snap = await db.doc(`users/${uid}`).get();
+        if (snap.exists && snap.data()?.stripeAccountId && snap.data()?.stripeAccountId !== accountId) {
+          res.status(403).json({ error: "Account mismatch" });
+          return;
+        }
+      }
+
+      const origin = normalizeOrigin(originFromClient || (req.headers.origin as string | undefined));
+      // Stripe Express dashboard login links do not support redirect_url
+
+      const link = await stripe().accounts.createLoginLink(accountId!);
+      res.json({ url: link.url });
+    } catch (err: any) {
+      try { console.error("createStripeLoginLink", JSON.stringify(err, Object.getOwnPropertyNames(err))); }
+      catch { console.error("createStripeLoginLink", err); }
+      res.status(500).json({ error: err?.message || "Unknown error" });
+    }
+  }
+);
