@@ -8,19 +8,26 @@ import PricingPublishSection from "./components/PricingPublishSection";
 import type { Lesson } from "./Types";
 import { LIMITS } from "./Types";
 import type { Errors } from "./Types";
+import { computeCourseStats } from "./components/courseStats";
 
 // 👇 Firestore + Auth
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase/firebase";
 import PageHeader from "../components/PageHeader";
 
+// 👇 ADD THIS
+import { useNavigate } from "react-router-dom";
+
 export default function CreatePage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isFree, setIsFree] = useState(true);
-  const [price, setPrice] = useState("0");
+  const [price, setPrice] = useState("0"); // (optional) you can set "0.00" for consistency
   const [publishing, setPublishing] = useState(false);
+
+  // 👇 ADD THIS
+  const navigate = useNavigate();
 
   const addLesson = () => setLessons(ls => [...ls, { title: "", content: "" }]);
 
@@ -62,21 +69,26 @@ export default function CreatePage() {
 
     const user = auth.currentUser;
     if (!user) {
-      // In theory this route should be protected already, but just in case:
       alert("Please sign in to publish a course.");
       return;
     }
 
+    const trimmedLessons = lessons.map((l) => ({
+      title: l.title.trim(),
+      content: l.content.trim(),
+    }));
+
+    // ✅ compute stats once and store
+    const stats = computeCourseStats(trimmedLessons);
+
     const payload = {
       title: title.trim(),
       description: description.trim(),
-      lessons: lessons.map((l) => ({
-        title: l.title.trim(),
-        content: l.content.trim(),
-      })),
+      lessons: trimmedLessons,
       isFree,
       price: isFree ? 0 : Number(price),
       creatorUid: user.uid,
+      stats, // <-- { lessons, words, minutes }
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -85,9 +97,8 @@ export default function CreatePage() {
       setPublishing(true);
       const docRef = await addDoc(collection(db, "courses"), payload);
       console.log("Course published with ID:", docRef.id);
-      alert("Course published!");
-      // Optionally reset form after publish:
       onReset();
+      navigate("/", { replace: true });
     } catch (err) {
       console.error(err);
       alert("Failed to publish course. Please try again.");

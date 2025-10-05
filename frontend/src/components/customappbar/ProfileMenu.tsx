@@ -7,6 +7,9 @@ import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import FeedbackOutlinedIcon from "@mui/icons-material/FeedbackOutlined";
+import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
+import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebase/firebase";
@@ -17,7 +20,13 @@ type Props = {
   displayName?: string | null;
 };
 
-const CREATE_LOGIN_LINK_URL = "https://createstripeloginlink-5rf4ii6yvq-uc.a.run.app"
+const CREATE_LOGIN_LINK_URL = "https://createstripeloginlink-5rf4ii6yvq-uc.a.run.app";
+
+// 🔗 Your Google Forms
+const FEEDBACK_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLScqPd9-gHCOEsQk26eLUt0NrMMDC0PkoRu-eV-Eg8G2x-utBw/viewform?usp=header";
+const REPORT_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLScIb7u1_414psQ47AJEKQM1VKj1rI8mp24SY_iB2t4_yd_cGw/viewform?usp=header";
 
 export default function ProfileMenu({ photoURL, displayName }: Props) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -25,22 +34,13 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
   const open = Boolean(anchorEl);
   const navigate = useNavigate();
 
-  // get uid + stripe status
   const { firebaseUser, stripeAccountId, stripeOnboarded } = useAuthProfile();
 
   const handleOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
   const handleClose = () => setAnchorEl(null);
+  const go = (path: string) => () => { handleClose(); navigate(path); };
 
-  const go = (path: string) => () => {
-    handleClose();
-    navigate(path);
-  };
-
-  const handleSignOut = async () => {
-    handleClose();
-    await signOut(auth);
-    navigate("/");
-  };
+  const handleSignOut = async () => { handleClose(); await signOut(auth); navigate("/"); };
 
   const openStripeDashboard = async () => {
     if (!firebaseUser || !stripeOnboarded || !stripeAccountId) return;
@@ -53,11 +53,7 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
       const res = await fetch(CREATE_LOGIN_LINK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uid: firebaseUser.uid,
-          // you could send accountId as well, server verifies it matches
-          origin: window.location.origin,
-        }),
+        body: JSON.stringify({ uid: firebaseUser.uid, origin: window.location.origin }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.url) throw new Error(data?.error || "Failed to create login link");
@@ -69,6 +65,11 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
     } finally {
       setDashLoading(false);
     }
+  };
+
+  const openExternal = (url: string) => () => {
+    handleClose();
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -99,15 +100,36 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
           <ListItemText>Edit created courses</ListItemText>
         </MenuItem>
 
+        {/* ✅ Feedback & Reporting */}
+        <Divider />
+
+        <MenuItem onClick={openExternal(FEEDBACK_FORM_URL)}>
+          <ListItemIcon><FeedbackOutlinedIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>Feedback & feature requests</ListItemText>
+        </MenuItem>
+
+        <MenuItem onClick={openExternal(REPORT_FORM_URL)}>
+          <ListItemIcon><FlagOutlinedIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>Report a course</ListItemText>
+        </MenuItem>
+
         {/* ✅ Only show if onboarded */}
         {stripeOnboarded && stripeAccountId && (
-          <MenuItem onClick={openStripeDashboard} disabled={dashLoading}>
-            <ListItemIcon><AccountBalanceWalletIcon fontSize="small" /></ListItemIcon>
-            <ListItemText>{dashLoading ? "Opening…" : "Stripe Dashboard"}</ListItemText>
-          </MenuItem>
+          <>
+            <Divider />
+            <MenuItem onClick={openStripeDashboard} disabled={dashLoading}>
+              <ListItemIcon><AccountBalanceWalletIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>{dashLoading ? "Opening…" : "Stripe Dashboard"}</ListItemText>
+            </MenuItem>
+          </>
         )}
 
         <Divider />
+
+        <MenuItem onClick={go("/terms")}>
+          <ListItemIcon><GavelOutlinedIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>Terms of Service</ListItemText>
+        </MenuItem>
 
         <MenuItem onClick={handleSignOut}>
           <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>

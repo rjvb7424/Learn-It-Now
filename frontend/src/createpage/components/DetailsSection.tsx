@@ -41,7 +41,7 @@ export default function DetailsSection({
             label="Description (Required)"
             fullWidth
             multiline
-            minRows={3}
+            minRows={2}
             value={description}
             onChange={limitedChange(setDescription, LIMITS.description)}
             inputProps={{ maxLength: LIMITS.description }}

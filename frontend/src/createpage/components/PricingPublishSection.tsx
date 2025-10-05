@@ -13,6 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { ChangeEvent } from "react";
+import { useEffect } from "react";
 import { LIMITS } from "../Types";
 
 type Props = {
@@ -26,7 +27,14 @@ type Props = {
   onReset: VoidFunction;
 };
 
-const MIN_PRICE_EUR = 2; // 👈 hard-coded minimum
+const MIN_PRICE_EUR = 2;
+const PLATFORM_FEE_RATE = 0.2;
+
+const toNumberSafe = (v: string) => {
+  const n = parseFloat(v || "0");
+  return Number.isFinite(n) ? n : 0;
+};
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export default function PricingPublishSection({
   isFree,
@@ -38,27 +46,56 @@ export default function PricingPublishSection({
   onPublish,
   onReset,
 }: Props) {
-  const onPriceChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const cleaned = e.target.value.replace(/[^\d.]/g, "");
-    if (cleaned === "") return setPrice("0");
+  // Ensure defaults:
+  // - Free courses keep price at 0.00
+  // - When switching to paid, prefill to €2.00 if below the minimum
+  useEffect(() => {
+    if (isFree) {
+      if (price !== "0.00") setPrice("0.00");
+    } else {
+      const n = toNumberSafe(price);
+      if (n < MIN_PRICE_EUR) setPrice(MIN_PRICE_EUR.toFixed(2));
+      else setPrice(n.toFixed(2));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFree]);
 
-    let num = parseFloat(cleaned);
-    if (!Number.isFinite(num) || num < 0) return setPrice("0");
-
-    num = Math.min(num, LIMITS.maxPrice);
-    const fixed = Math.floor(num * 10) / 10; // keep 1 decimal place like before
-    setPrice(fixed.toString());
+  const normalizePriceInput = (raw: string) => {
+    // Allow digits, one decimal (comma or dot), max 2 decimals
+    const withDot = raw.replace(/,/g, ".").replace(/[^\d.]/g, "");
+    const [intPart = "0", decPartRaw = ""] = withDot.split(".");
+    const decPart = decPartRaw.slice(0, 2);
+    return decPartRaw === "" && withDot.includes(".")
+      ? `${intPart}.` // allow typing the dot and then decimals
+      : decPartRaw !== undefined
+      ? `${intPart}${decPart ? "." + decPart : ""}`
+      : intPart;
   };
 
-  const priceNum = parseFloat(price || "0");
+  const onPriceChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setPrice(normalizePriceInput(e.target.value));
+  };
+
+  const priceNumRaw = toNumberSafe(price);
+  const priceNum = isFree ? 0 : priceNumRaw;
   const tooLow = !isFree && priceNum < MIN_PRICE_EUR;
+
+  const fee = isFree ? 0 : round2(priceNum * PLATFORM_FEE_RATE);
+  const total = isFree ? 0 : round2(priceNum + fee);
 
   return (
     <Card>
       <CardContent>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Pricing & Publish
+        <Typography variant="h6" sx={{ mb: 0.5 }}>
+          Pricing &amp; Publish
         </Typography>
+
+        {!isFree && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Buyers pay the course price plus a 20% platform fee. Estimated total: €{total.toFixed(2)}
+            {" "} (course €{priceNum.toFixed(2)} + fee €{fee.toFixed(2)}).
+          </Typography>
+        )}
 
         <Stack spacing={2}>
           <FormControlLabel
@@ -68,7 +105,7 @@ export default function PricingPublishSection({
                 onChange={(e) => {
                   const checked = e.target.checked;
                   setIsFree(checked);
-                  setPrice("0");
+                  setPrice(checked ? "0.00" : MIN_PRICE_EUR.toFixed(2));
                 }}
               />
             }
@@ -82,17 +119,19 @@ export default function PricingPublishSection({
               value={price}
               onChange={onPriceChange}
               onBlur={() => {
-                // optional: bump up to the minimum on blur
-                if (priceNum > 0 && priceNum < MIN_PRICE_EUR) {
-                  setPrice(MIN_PRICE_EUR.toFixed(1)); // keep your 1-decimal style
-                }
+                let num = toNumberSafe(price);
+                num = Math.min(Math.max(num, 0), LIMITS.maxPrice);
+                if (num > 0 && num < MIN_PRICE_EUR) num = MIN_PRICE_EUR;
+                setPrice(num.toFixed(2));
               }}
-              type="number"
-              inputProps={{ min: MIN_PRICE_EUR, max: LIMITS.maxPrice, step: 0.1 }}
+              // Use text + inputMode so typing feels natural across browsers
+              type="text"
+              inputMode="decimal"
+              inputProps={{ min: MIN_PRICE_EUR, max: LIMITS.maxPrice, step: 0.01 }}
               helperText={
                 tooLow
                   ? `Minimum price is €${MIN_PRICE_EUR.toFixed(2)}.`
-                  : `Enter a price between €${MIN_PRICE_EUR.toFixed(2)} and €${LIMITS.maxPrice}.`
+                  : `Enter a price between €${MIN_PRICE_EUR.toFixed(2)} and €${(LIMITS.maxPrice as number).toFixed?.(2) ?? LIMITS.maxPrice}.`
               }
               error={tooLow}
             />

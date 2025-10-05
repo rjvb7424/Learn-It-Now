@@ -43,7 +43,7 @@ export default function LessonItem({ lesson, index, updateLesson, removeLesson }
             label="Lesson Content (Required)"
             fullWidth
             multiline
-            minRows={3}
+            minRows={4}
             value={lesson.content}
             onChange={(e) =>
               updateLesson(

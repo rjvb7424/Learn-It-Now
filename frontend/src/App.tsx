@@ -13,12 +13,16 @@ export function RefreshPage() {
   return <div>Onboarding expired, retrying…</div>;
 }
 
+// src/App.tsx
+import TermsOfService from "./TermsOfService";
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         {/* Public */}
         <Route path="/" element={<HomePage />} />
+        <Route path="/terms" element={<TermsOfService />} />
         <Route path="/return/:accountId" element={<ReturnPage />} />
         <Route path="/refresh/:accountId" element={<RefreshPage />} />
 
