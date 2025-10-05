@@ -2,12 +2,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "./firebase/firebase"; // 👈 fix relative path
+import { auth } from "./firebase/firebase"; // ← ensure correct path
 import { Box, CircularProgress, Typography } from "@mui/material";
 
-// Prefer an env var so you don't rebuild when the URL changes
-// .env: VITE_FINALIZE_CHECKOUT_URL=https://finalizecheckout-xxxxxxxx-uc.a.run.app
-const FINALIZE_CHECKOUT_URL = "https://finalizecheckout-5rf4ii6yvq-uc.a.run.app"
+const FINALIZE_CHECKOUT_URL = "https://finalizecheckout-5rf4ii6yvq-uc.a.run.app";
 
 export default function CheckoutSuccess() {
   const [params] = useSearchParams();
@@ -15,29 +13,33 @@ export default function CheckoutSuccess() {
   const [uid, setUid] = useState<string | null>(null);
 
   const sessionId = params.get("session_id");
-  const courseId = params.get("course"); // extra helper in success_url
+  const courseId  = params.get("course");
 
   useEffect(() => onAuthStateChanged(auth, (u) => setUid(u?.uid ?? null)), []);
 
   useEffect(() => {
     (async () => {
-      if (!uid || !sessionId) return;
+      // if user not signed in, push them to sign-in (or choose your own route)
+      if (uid === null) return;               // still resolving auth
+      if (!uid) {                             // resolved as signed-out
+        navigate(`/signin?next=${encodeURIComponent(window.location.href)}`, { replace: true });
+        return;
+      }
+      if (!sessionId) {
+        navigate(`/purchases?error=missing_session`, { replace: true });
+        return;
+      }
+
       try {
         const res = await fetch(FINALIZE_CHECKOUT_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid, sessionId }),
+          body: JSON.stringify({ uid, sessionId }), // ← no accountId
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          console.error("finalizeCheckout error:", data);
-          throw new Error(data?.error || "Finalize failed");
-        }
-        // Server wrote: users/{uid}/purchases/{courseId}
-        const dest = courseId || data.courseId;
-        navigate(`/course/${dest}`, { replace: true });
-      } catch (e) {
-        console.error("Finalize failed", e);
+        if (!res.ok) throw new Error(data?.error || "Finalize failed");
+        navigate(`/course/${courseId || data.courseId}`, { replace: true });
+      } catch {
         navigate(`/purchases?error=finalize_failed`, { replace: true });
       }
     })();

@@ -51,7 +51,7 @@ export const createAccount = onRequest({ secrets: [STRIPE_SECRET], cors: true },
       },
       capabilities: {
         card_payments: { requested: true },
-        transfers: { requested: true },
+        transfers: { requested: true }
       },
     };
 

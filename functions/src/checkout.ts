@@ -63,7 +63,7 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
       mode: "payment",
       success_url,
       cancel_url,
-      line_items: [
+            line_items: [
         {
           quantity: 1,
           price_data: {
@@ -88,14 +88,11 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
         },
       ],
       payment_intent_data: {
-        // Send funds to creator (destination charge)
+        // funds to creator
         transfer_data: { destination: creator.stripeAccountId! },
 
-        // Your platform keeps the 20% fee
+        // your platform fee
         application_fee_amount: platformFee,
-
-        // Recommended: bill fees & descriptor on behalf of creator
-        on_behalf_of: creator.stripeAccountId!,
         metadata: { uid, courseId },
       },
       metadata: { uid, courseId },
