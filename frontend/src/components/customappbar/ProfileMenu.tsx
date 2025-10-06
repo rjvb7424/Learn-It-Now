@@ -72,9 +72,16 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  const menuId = "profile-menu";
+
   return (
     <>
-      <IconButton onClick={handleOpen}>
+      <IconButton
+        onClick={handleOpen}
+        aria-controls={open ? menuId : undefined}
+        aria-haspopup="menu"
+        aria-expanded={open ? "true" : undefined}
+      >
         <Avatar
           src={photoURL ?? undefined}
           alt={displayName ?? "User"}
@@ -84,11 +91,13 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
       </IconButton>
 
       <Menu
+        id={menuId}
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
+        keepMounted
       >
         <MenuItem onClick={go("/purchases")}>
           <ListItemIcon><LibraryBooksIcon fontSize="small" /></ListItemIcon>
@@ -100,12 +109,11 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
           <ListItemText>Edit created courses</ListItemText>
         </MenuItem>
 
-        {/* ✅ Feedback & Reporting */}
         <Divider />
 
         <MenuItem onClick={openExternal(FEEDBACK_FORM_URL)}>
           <ListItemIcon><FeedbackOutlinedIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>Feedback & feature requests</ListItemText>
+          <ListItemText>Feedback &amp; feature requests</ListItemText>
         </MenuItem>
 
         <MenuItem onClick={openExternal(REPORT_FORM_URL)}>
@@ -113,15 +121,13 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
           <ListItemText>Report a course</ListItemText>
         </MenuItem>
 
-        {/* ✅ Only show if onboarded */}
+        {/* Show Stripe items only if onboarded — no Fragments */}
+        {stripeOnboarded && stripeAccountId && <Divider />}
         {stripeOnboarded && stripeAccountId && (
-          <>
-            <Divider />
-            <MenuItem onClick={openStripeDashboard} disabled={dashLoading}>
-              <ListItemIcon><AccountBalanceWalletIcon fontSize="small" /></ListItemIcon>
-              <ListItemText>{dashLoading ? "Opening…" : "Stripe Dashboard"}</ListItemText>
-            </MenuItem>
-          </>
+          <MenuItem onClick={openStripeDashboard} disabled={dashLoading}>
+            <ListItemIcon><AccountBalanceWalletIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>{dashLoading ? "Opening…" : "Stripe Dashboard"}</ListItemText>
+          </MenuItem>
         )}
 
         <Divider />
