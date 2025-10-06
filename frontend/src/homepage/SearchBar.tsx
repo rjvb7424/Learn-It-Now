@@ -28,9 +28,7 @@ export default function SearchBar({ initialValue = "", onSearch }: Props) {
           if (e.key === "Enter") onSearch?.(value.trim());
         }}
         sx={{
-          bgcolor: "white",
           borderRadius: 2,
-          "& .MuiInputBase-input": { py: 1.1 },
         }}
       />
     </Box>

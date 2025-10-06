@@ -10,11 +10,7 @@ import CreateButton from "./CreateButton";
 import ProfileMenu from "./ProfileMenu";
 import SearchBar from "../../homepage/SearchBar";
 
-
-type CustomAppBarProps = {
-  /** Show the centered search bar. Defaults to true. */
-  showSearch?: boolean;
-};
+type CustomAppBarProps = { showSearch?: boolean };
 
 export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
   const navigate = useNavigate();
@@ -32,7 +28,18 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
 
   return (
     <Box>
-      <AppBar position="static" sx={{ backgroundColor: "transparent", boxShadow: "none" }}>
+      {/* color="transparent" + enableColorOnDark makes it *truly* transparent in dark mode */}
+      <AppBar
+        position="static"
+        color="transparent"
+        enableColorOnDark
+        elevation={0}
+        sx={{
+          backgroundColor: "transparent",
+          backgroundImage: "none",
+          boxShadow: "none",
+        }}
+      >
         <Toolbar
           sx={{
             px: 3,
@@ -40,7 +47,6 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
             flexWrap: "nowrap",
             alignItems: "center",
             overflow: "hidden",
-            // keep constant height to prevent the 600px jump
             minHeight: 60,
             "@media (min-width:0px)": { minHeight: 60 },
             "@media (min-width:600px)": { minHeight: 60 },
@@ -48,8 +54,9 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
         >
           {/* Left: logo */}
           <Box sx={{ flex: "0 0 auto", minWidth: 0, display: "flex", alignItems: "center", order: 1 }}>
-            <Button disableRipple onClick={() => navigate("/")} sx={{ textTransform: "none" }}>
-              <Typography noWrap sx={{ fontWeight: "bold", color: "black", fontSize: "1.25rem" }}>
+            <Button disableRipple onClick={() => navigate("/")} sx={{ textTransform: "none", color: "inherit" }}>
+              {/* Use inherit so it follows theme (white in dark mode) */}
+              <Typography noWrap sx={{ fontWeight: "bold", color: "inherit", fontSize: "1.25rem" }}>
                 Learn It Now
               </Typography>
             </Button>
@@ -57,17 +64,15 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
 
           {/* Middle: search (optional) */}
           {showSearch ? (
-          <Box
-            sx={{ order: 2, flex: "1 1 auto", minWidth: 0, display: "flex", justifyContent: "center" }}
-          >
-            <SearchBar
-              initialValue={currentQ}
-              onSearch={(q) => navigate(q ? `/?q=${encodeURIComponent(q)}` : "/")}
-            />
-          </Box>
-        ) : (
-          <Box aria-hidden role="presentation" sx={{ order: 2, flex: "1 1 auto", minWidth: 0 }} />
-        )}
+            <Box sx={{ order: 2, flex: "1 1 auto", minWidth: 0, display: "flex", justifyContent: "center" }}>
+              <SearchBar
+                initialValue={currentQ}
+                onSearch={(q) => navigate(q ? `/?q=${encodeURIComponent(q)}` : "/")}
+              />
+            </Box>
+          ) : (
+            <Box aria-hidden role="presentation" sx={{ order: 2, flex: "1 1 auto", minWidth: 0 }} />
+          )}
 
           {/* Right: actions */}
           <Box sx={{ order: 3, display: "flex", alignItems: "center", gap: 1.5, flex: "0 0 auto", minWidth: 0 }}>
@@ -85,9 +90,8 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
             ) : (
               <Button
                 variant="outlined"
-                onClick={async () => {
-                  await SignIn();
-                }}
+                color="primary"
+                onClick={async () => { await SignIn(); }}
                 aria-label="Sign in"
               >
                 Sign in
