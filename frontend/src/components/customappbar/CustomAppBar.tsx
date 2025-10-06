@@ -56,7 +56,7 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
           <Box sx={{ flex: "0 0 auto", minWidth: 0, display: "flex", alignItems: "center", order: 1 }}>
             <Button disableRipple onClick={() => navigate("/")} sx={{ textTransform: "none", color: "inherit" }}>
               {/* Use inherit so it follows theme (white in dark mode) */}
-              <Typography noWrap sx={{ fontWeight: "bold", color: "inherit", fontSize: "1.25rem" }}>
+              <Typography noWrap sx={{ fontWeight: "bold", color: "inherit", fontSize: "1.45rem" }}>
                 Learn It Now
               </Typography>
             </Button>
@@ -75,27 +75,65 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
           )}
 
           {/* Right: actions */}
-          <Box sx={{ order: 3, display: "flex", alignItems: "center", gap: 1.5, flex: "0 0 auto", minWidth: 0 }}>
-            {firebaseUser ? (
-              <>
-                <CreateButton
-                  isSignedIn
-                  canPublishPaid={canPublishPaid}
-                  openStripeDialog={openStripeDialog}
-                  loadingSignIn={loadingSignIn}
-                  setLoadingSignIn={setLoadingSignIn}
-                />
-                <ProfileMenu photoURL={firebaseUser.photoURL} displayName={firebaseUser.displayName} />
-              </>
-            ) : (
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={async () => { await SignIn(); }}
-                aria-label="Sign in"
+          {/* Right: actions (stable width to prevent search bar jump) */}
+          {/* Right: actions — perfectly stable width */}
+          <Box
+            sx={{
+              order: 3,
+              position: "relative",
+              flex: "0 0 auto",
+              minWidth: 0,
+            }}
+          >
+            {/* This row always participates in layout so width NEVER changes */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                ...(firebaseUser
+                  ? {}
+                  : {
+                      // Keep size, remove interactivity/visibility
+                      visibility: "hidden",
+                      pointerEvents: "none",
+                    }),
+              }}
+              aria-hidden={!firebaseUser}
+            >
+              <CreateButton
+                // Render the REAL thing so sizing is identical
+                isSignedIn
+                canPublishPaid={canPublishPaid}
+                openStripeDialog={openStripeDialog}
+                loadingSignIn={loadingSignIn}
+                setLoadingSignIn={setLoadingSignIn}
+              />
+              <ProfileMenu photoURL={firebaseUser?.photoURL} displayName={firebaseUser?.displayName} />
+            </Box>
+
+            {/* Overlay only when signed out */}
+            {!firebaseUser && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                }}
               >
-                Sign in
-              </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={async () => {
+                    await SignIn();
+                  }}
+                  aria-label="Sign in"
+                  sx={{ width: "100%" }}
+                >
+                  Sign in
+                </Button>
+              </Box>
             )}
           </Box>
         </Toolbar>
