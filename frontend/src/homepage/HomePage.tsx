@@ -1,10 +1,11 @@
-// src/homepage/HomePage.tsx  (your file path uses 'homepage', keep as-is)
-import { useEffect, useRef, useState } from "react";
+// src/homepage/HomePage.tsx
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Box } from "@mui/material";
 import {
   collection, onSnapshot, orderBy, query, where, documentId, getDocs,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import { useLocation } from "react-router-dom";
 import CustomAppBar from "../components/customappbar/CustomAppBar";
 import CourseGrid from "../components/CourseGrid";
 import { db, auth } from "../firebase/firebase";
@@ -14,14 +15,21 @@ import PageHeader from "../components/PageHeader";
 import { useCourseCheckout } from "../hooks/useCourseCheckout";
 
 export default function HomePage() {
-  const [items, setItems] = useState<ReturnType<typeof courseToCard>[]>([]);
+  const [allItems, setAllItems] = useState<ReturnType<typeof courseToCard>[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasedIds, setPurchasedIds] = useState<Set<string>>(new Set());
   const [profiles, setProfiles] = useState<Record<string, UserDoc>>({});
   const fetchedUidsRef = useRef<Set<string>>(new Set());
   const [uid, setUid] = useState<string | null>(null);
 
+  const location = useLocation();
   const { startCheckout } = useCourseCheckout(uid);
+
+  // current query from URL (?q=...)
+  const q = useMemo(() => {
+    const search = new URLSearchParams(location.search).get("q") || "";
+    return search.trim().toLowerCase();
+  }, [location.search]);
 
   // auth + purchases subscription
   useEffect(() => {
@@ -48,9 +56,9 @@ export default function HomePage() {
 
   // Load all courses + creator profiles
   useEffect(() => {
-    const q = query(collection(db, "courses"), orderBy("createdAt", "desc"));
+    const qCourses = query(collection(db, "courses"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
-      q,
+      qCourses,
       async (snap) => {
         setLoading(true);
         const uids = new Set<string>();
@@ -73,24 +81,34 @@ export default function HomePage() {
           if (Object.keys(updates).length) setProfiles((p) => ({ ...p, ...updates }));
         }
 
-        setItems(
-          raw.map(({ id, data }) => {
-            const prof = data.creatorUid ? profiles[data.creatorUid] : undefined;
-            const name = prof?.displayName ?? "Creator";
-            const avatar = prof?.photoURL;
-            return courseToCard(id, data, name, avatar, purchasedIds.has(id));
-          })
-        );
+        const cards = raw.map(({ id, data }) => {
+          const prof = data.creatorUid ? profiles[data.creatorUid] : undefined;
+          const name = prof?.displayName ?? "Creator";
+          const avatar = prof?.photoURL;
+          return courseToCard(id, data, name, avatar, purchasedIds.has(id));
+        });
+
+        setAllItems(cards);
         setLoading(false);
       },
       (err) => {
         console.error("Failed to load courses:", err);
-        setItems([]);
+        setAllItems([]);
         setLoading(false);
       }
     );
     return () => unsub();
   }, [profiles, purchasedIds]);
+
+  // Filtered items derived from URL query (no effect, no warning)
+  const items = useMemo(() => {
+    if (!q) return allItems;
+    const queryStr = q.toLowerCase();
+    return allItems.filter((card) => {
+      const haystack = `${card.title} ${card.description} ${card.author}`.toLowerCase();
+      return haystack.includes(queryStr);
+    });
+  }, [allItems, q]);
 
   return (
     <Box>
@@ -99,11 +117,15 @@ export default function HomePage() {
         <Box sx={{ position: "absolute", top: 11, left: "50%", transform: "translateX(-50%)", zIndex: (t) => t.zIndex.appBar + 1 }} />
       </Box>
 
-      <PageHeader title="Home Page" subtitle="Browse all available courses in our platform!" />
+      <PageHeader
+        title={q ? `Results for “${new URLSearchParams(location.search).get("q")?.trim()}”` : "Home Page"}
+        subtitle={q ? "A list of courses matching your search." : "Browse all available courses in our platform!"}
+      />
 
       <CourseGrid
         items={items}
         loading={loading}
+        emptyText={q ? "No courses match your search." : "No courses yet."}
         onAcquire={({ courseId }) => startCheckout(courseId)}  // ✅ paid path
       />
     </Box>

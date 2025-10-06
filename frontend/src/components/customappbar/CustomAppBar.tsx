@@ -1,7 +1,7 @@
 // src/components/customappbar/CustomAppBar.tsx
 import { useState } from "react";
 import { AppBar, Toolbar, Button, Box, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthProfile } from "../../hooks/useAuthProfile";
 import { useStripeOnboarding } from "../../hooks/useStripeOnboarding";
 import { SignIn } from "../../firebase/SignIn";
@@ -9,6 +9,7 @@ import StripeSetupDialog from "./StripeSetupDialog";
 import CreateButton from "./CreateButton";
 import ProfileMenu from "./ProfileMenu";
 import SearchBar from "../../homepage/SearchBar";
+
 
 type CustomAppBarProps = {
   /** Show the centered search bar. Defaults to true. */
@@ -19,6 +20,9 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
   const navigate = useNavigate();
   const [loadingSignIn, setLoadingSignIn] = useState(false);
   const [dlgOpen, setDlgOpen] = useState(false);
+
+  const location = useLocation();
+  const currentQ = new URLSearchParams(location.search).get("q") ?? "";
 
   const { firebaseUser, stripeAccountId, stripeOnboarded, canPublishPaid } = useAuthProfile();
   const { busy, error, setError, createAccountAndGo, continueOnboarding } =
@@ -53,29 +57,17 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
 
           {/* Middle: search (optional) */}
           {showSearch ? (
-            <Box
-              sx={{
-                order: 2,
-                flex: "1 1 auto",
-                minWidth: 0,
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
-              <SearchBar onSearch={(q) => navigate(q ? `/?q=${encodeURIComponent(q)}` : "/")} />
-            </Box>
-          ) : (
-            // Placeholder that holds the center space so right items stay at the far right
-            <Box
-              aria-hidden
-              role="presentation"
-              sx={{
-                order: 2,
-                flex: "1 1 auto",
-                minWidth: 0,
-              }}
+          <Box
+            sx={{ order: 2, flex: "1 1 auto", minWidth: 0, display: "flex", justifyContent: "center" }}
+          >
+            <SearchBar
+              initialValue={currentQ}
+              onSearch={(q) => navigate(q ? `/?q=${encodeURIComponent(q)}` : "/")}
             />
-          )}
+          </Box>
+        ) : (
+          <Box aria-hidden role="presentation" sx={{ order: 2, flex: "1 1 auto", minWidth: 0 }} />
+        )}
 
           {/* Right: actions */}
           <Box sx={{ order: 3, display: "flex", alignItems: "center", gap: 1.5, flex: "0 0 auto", minWidth: 0 }}>

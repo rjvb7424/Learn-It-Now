@@ -1,22 +1,22 @@
+// src/homepage/SearchBar.tsx
 import { Box, TextField } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
+  initialValue?: string;          // 👈 new
   onSearch?: (q: string) => void;
 };
 
-export default function SearchBar({ onSearch }: Props) {
-  const [value, setValue] = useState("");
+export default function SearchBar({ initialValue = "", onSearch }: Props) {
+  const [value, setValue] = useState(initialValue);
+
+  // keep the field in sync if the parent changes the value (e.g., back/forward nav)
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
 
   return (
-    <Box
-      sx={{
-        width: 1,
-        // IMPORTANT: allow the TextField to actually shrink inside flex/grid parents
-        minWidth: 0,
-        maxWidth: 500,
-      }}
-    >
+    <Box sx={{ width: 1, minWidth: 0, maxWidth: 500 }}>
       <TextField
         placeholder="Search..."
         variant="outlined"
@@ -30,7 +30,6 @@ export default function SearchBar({ onSearch }: Props) {
         sx={{
           bgcolor: "white",
           borderRadius: 2,
-          // keep height reasonable as we scale down
           "& .MuiInputBase-input": { py: 1.1 },
         }}
       />
