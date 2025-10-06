@@ -22,7 +22,6 @@ type Props = {
 
 const CREATE_LOGIN_LINK_URL = "https://createstripeloginlink-5rf4ii6yvq-uc.a.run.app";
 
-// 🔗 Your Google Forms
 const FEEDBACK_FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLScqPd9-gHCOEsQk26eLUt0NrMMDC0PkoRu-eV-Eg8G2x-utBw/viewform?usp=header";
 const REPORT_FORM_URL =
@@ -39,7 +38,6 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
   const handleOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
   const handleClose = () => setAnchorEl(null);
   const go = (path: string) => () => { handleClose(); navigate(path); };
-
   const handleSignOut = async () => { handleClose(); await signOut(auth); navigate("/"); };
 
   const openStripeDashboard = async () => {
@@ -55,7 +53,11 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid: firebaseUser.uid, origin: window.location.origin }),
       });
-      const data = await res.json().catch(() => ({}));
+      interface StripeLoginLinkResponse {
+        url?: string;
+        error?: string;
+      }
+      const data: StripeLoginLinkResponse = await res.json().catch(() => ({} as StripeLoginLinkResponse));
       if (!res.ok || !data?.url) throw new Error(data?.error || "Failed to create login link");
       handleClose();
       window.location.assign(data.url as string);
@@ -99,14 +101,25 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
         transformOrigin={{ vertical: "top", horizontal: "right" }}
         keepMounted
       >
+        {/* Stripe block (no divider above; divider goes BELOW if visible) */}
+        {stripeOnboarded && stripeAccountId && (
+          <>
+            <MenuItem onClick={openStripeDashboard} disabled={dashLoading}>
+              <ListItemIcon><AccountBalanceWalletIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>{dashLoading ? "Opening…" : "Stripe Dashboard"}</ListItemText>
+            </MenuItem>
+            <Divider />
+          </>
+        )}
+
         <MenuItem onClick={go("/purchases")}>
           <ListItemIcon><LibraryBooksIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>Acquired courses</ListItemText>
+          <ListItemText>Purchased courses</ListItemText>
         </MenuItem>
 
         <MenuItem onClick={go("/my-courses")}>
           <ListItemIcon><EditNoteIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>Edit created courses</ListItemText>
+          <ListItemText>Created courses</ListItemText>
         </MenuItem>
 
         <Divider />
@@ -121,21 +134,14 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
           <ListItemText>Report a course</ListItemText>
         </MenuItem>
 
-        {/* Show Stripe items only if onboarded — no Fragments */}
-        {stripeOnboarded && stripeAccountId && <Divider />}
-        {stripeOnboarded && stripeAccountId && (
-          <MenuItem onClick={openStripeDashboard} disabled={dashLoading}>
-            <ListItemIcon><AccountBalanceWalletIcon fontSize="small" /></ListItemIcon>
-            <ListItemText>{dashLoading ? "Opening…" : "Stripe Dashboard"}</ListItemText>
-          </MenuItem>
-        )}
-
         <Divider />
 
         <MenuItem onClick={go("/terms")}>
           <ListItemIcon><GavelOutlinedIcon fontSize="small" /></ListItemIcon>
           <ListItemText>Terms of Service</ListItemText>
         </MenuItem>
+
+        <Divider />
 
         <MenuItem onClick={handleSignOut}>
           <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>

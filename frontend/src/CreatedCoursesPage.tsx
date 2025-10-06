@@ -120,7 +120,7 @@ export default function MyCoursesPage() {
 
   return (
     <Box>
-      <CustomAppBar />
+      <CustomAppBar showSearch={false} />
       <PageHeader title="Created Courses Page" subtitle="A list of all the Courses you’ve created!" />
       <CourseGrid
         items={items}
