@@ -101,16 +101,15 @@ export default function ProfileMenu({ photoURL, displayName }: Props) {
         transformOrigin={{ vertical: "top", horizontal: "right" }}
         keepMounted
       >
-        {/* Stripe block (no divider above; divider goes BELOW if visible) */}
-        {stripeOnboarded && stripeAccountId && (
-          <>
-            <MenuItem onClick={openStripeDashboard} disabled={dashLoading}>
-              <ListItemIcon><AccountBalanceWalletIcon fontSize="small" /></ListItemIcon>
-              <ListItemText>{dashLoading ? "Opening…" : "Stripe Dashboard"}</ListItemText>
-            </MenuItem>
-            <Divider />
-          </>
-        )}
+        {stripeOnboarded && stripeAccountId
+          ? [
+              <MenuItem key="stripe-dash" onClick={openStripeDashboard} disabled={dashLoading}>
+                <ListItemIcon><AccountBalanceWalletIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>{dashLoading ? "Opening…" : "Stripe Dashboard"}</ListItemText>
+              </MenuItem>,
+              <Divider key="stripe-div" />
+            ]
+          : null}
 
         <MenuItem onClick={go("/purchases")}>
           <ListItemIcon><LibraryBooksIcon fontSize="small" /></ListItemIcon>
