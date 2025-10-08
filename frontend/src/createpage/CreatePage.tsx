@@ -8,6 +8,7 @@ import PricingPublishSection from "./components/PricingPublishSection";
 import type { Lesson } from "./Types";
 import { LIMITS } from "./Types";
 import type { Errors } from "./Types";
+import PolicyNotice from "./components/PolicyNotice";
 
 import { collection, addDoc, serverTimestamp, setDoc, doc } from "firebase/firestore";
 import { auth, db } from "../firebase/firebase";
@@ -125,6 +126,8 @@ export default function CreatePage() {
       <CustomAppBar showSearch={false} />
       <Container>
         <PageHeader title="Create a New Course Page" subtitle="Fill in the details below to create your very own course!" />
+
+        <PolicyNotice />
 
         <DetailsSection
           title={title}
