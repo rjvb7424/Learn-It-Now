@@ -138,36 +138,53 @@ export default function CourseCard({
           subheader={date}
           sx={{ pt: 2, pb: 0 }}
         />
-        <CardContent sx={{ pt: 2, pb: 2, flexGrow: 1 }}>
-          <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>{title}</Typography>
-          <Typography variant="body2" color="text.secondary" sx={clamp(3)}>{description}</Typography>
+          <CardContent
+            sx={{
+              pt: 2,
+              pb: 2,
+              flexGrow: 1,
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0, // helps prevent overflow on small cards
+            }}
+          >
+            <Typography variant="h6" sx={{ mb: 0.5, ...clamp(2) }}>{title}</Typography>
+            <Typography variant="body2" color="text.secondary" sx={clamp(3)}>
+              {description}
+            </Typography>
 
-          {stats && (
-            <Box sx={{ mt: 1.25, display: "flex", gap: 2, flexWrap: "wrap" }}>
-              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
-                <MenuBook fontSize="small" />
-                <Typography variant="caption">
-                  {stats.lessons} lesson{stats.lessons === 1 ? "" : "s"}
-                </Typography>
-              </Box>
-              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
-                <AccessTime fontSize="small" />
-                <Typography variant="caption">{stats.minutes} min read</Typography>
-              </Box>
-              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
-                <Article fontSize="small" />
-                <Typography variant="caption">{stats.words.toLocaleString()} words</Typography>
-              </Box>
-            </Box>
-          )}
-        </CardContent>
+            {/* spacer pushes the stats row to the bottom of CardContent */}
+            <Box sx={{ flexGrow: 1 }} />
 
-        <CardActions disableSpacing sx={{ px: 2, pt: 0, pb: 2, display: "flex", justifyContent: "flex-start" }}>
-          <Button size="small" variant="contained" onClick={handlePrimaryButton}>
-            Learn It Now
-          </Button>
-        </CardActions>
-      </Card>
+            {stats && (
+              <Box sx={{ mt: 1.25, display: "flex", gap: 2, flexWrap: "wrap" }}>
+                <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+                  <MenuBook fontSize="small" />
+                  <Typography variant="caption">
+                    {stats.lessons} lesson{stats.lessons === 1 ? "" : "s"}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+                  <AccessTime fontSize="small" />
+                  <Typography variant="caption">{stats.minutes} min read</Typography>
+                </Box>
+                <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+                  <Article fontSize="small" />
+                  <Typography variant="caption">{stats.words.toLocaleString()} words</Typography>
+                </Box>
+              </Box>
+            )}
+          </CardContent>
+
+          <CardActions
+            disableSpacing
+            sx={{ px: 2, pt: 0, pb: 2, display: "flex", justifyContent: "flex-start" }}
+          >
+            <Button size="small" variant="contained" onClick={handlePrimaryButton}>
+              Learn It Now
+            </Button>
+          </CardActions>
+        </Card>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 3 } }}>
         {!user ? (
