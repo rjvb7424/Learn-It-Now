@@ -9,33 +9,30 @@ import type { Lesson } from "./Types";
 import { LIMITS } from "./Types";
 import type { Errors } from "./Types";
 
-// 👇 Firestore + Auth
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, setDoc, doc } from "firebase/firestore";
 import { auth, db } from "../firebase/firebase";
 import PageHeader from "../components/PageHeader";
-
-// 👇 ADD THIS
 import { useNavigate } from "react-router-dom";
+import LoadingOverlay from "../LoadingOverlay"; // ⬅️ use reusable loader
 
 export default function CreatePage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isFree, setIsFree] = useState(true);
-  const [price, setPrice] = useState("0"); // (optional) you can set "0.00" for consistency
+  const [price, setPrice] = useState("0");
   const [publishing, setPublishing] = useState(false);
 
-  // 👇 ADD THIS
   const navigate = useNavigate();
 
-  const addLesson = () => setLessons(ls => [...ls, { title: "", content: "" }]);
+  const addLesson = () => setLessons((ls) => [...ls, { title: "", content: "" }]);
 
   const updateLesson = (index: number, field: "title" | "content", value: string) => {
-    setLessons(ls => ls.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
+    setLessons((ls) => ls.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   };
 
   const removeLesson = (index: number) => {
-    setLessons(ls => ls.filter((_, i) => i !== index));
+    setLessons((ls) => ls.filter((_, i) => i !== index));
   };
 
   const errors: Errors = useMemo(() => {
@@ -62,7 +59,6 @@ export default function CreatePage() {
     return msgs;
   }, [errors]);
 
-  // 👇 Save to Firestore
   const onPublish = async () => {
     if (!canPublish || publishing) return;
 
@@ -90,10 +86,24 @@ export default function CreatePage() {
 
     try {
       setPublishing(true);
-      const docRef = await addDoc(collection(db, "courses"), payload);
-      console.log("Course published with ID:", docRef.id);
+
+      // 1) Create the course
+      const courseRef = await addDoc(collection(db, "courses"), payload);
+
+      // 2) Immediately add it to the creator's purchases so they can view it
+      await setDoc(
+        doc(db, "users", user.uid, "purchases", courseRef.id),
+        {
+          acquiredAt: serverTimestamp(),
+          currentLessonIndex: 0, // start at first lesson
+        },
+        { merge: true }
+      );
+
+      // 3) Reset and navigate (keep your target; or navigate to the new course)
       onReset();
       navigate("/", { replace: true });
+      // or: navigate(`/course/${courseRef.id}`);
     } catch (err) {
       console.error(err);
       alert("Failed to publish course. Please try again.");
@@ -142,6 +152,9 @@ export default function CreatePage() {
           onReset={onReset}
         />
       </Container>
+
+      {/* Reusable full-screen loading while publishing */}
+      <LoadingOverlay open={publishing} />
     </Box>
   );
 }
