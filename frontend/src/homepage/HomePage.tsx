@@ -1,6 +1,6 @@
 // src/homepage/HomePage.tsx
 import { useEffect, useRef, useState, useMemo } from "react";
-import { Box, Backdrop, CircularProgress } from "@mui/material";
+import { Box } from "@mui/material";
 import {
   collection, onSnapshot, orderBy, query, where, documentId, getDocs,
 } from "firebase/firestore";
@@ -13,6 +13,7 @@ import { courseToCard } from "../components/courseMapping";
 import type { FirestoreCourse, UserDoc } from "../components/courseMapping";
 import PageHeader from "../components/PageHeader";
 import { useCourseCheckout } from "../hooks/useCourseCheckout";
+import LoadingOverlay from "../LoadingOverlay";
 
 type Lesson = { title: string; content: string };
 type Stats = { lessons: number; words: number; minutes: number };
@@ -162,16 +163,7 @@ export default function HomePage() {
         />
       )}
 
-      <Backdrop
-        open={loading}
-        sx={{
-          color: "#fff",
-          zIndex: (t) => t.zIndex.drawer + 2,
-          backdropFilter: "blur(1px)",
-        }}
-      >
-        <CircularProgress color="inherit" />
-      </Backdrop>
+      <LoadingOverlay open={loading} />
     </Box>
   );
 }

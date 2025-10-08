@@ -1,3 +1,4 @@
+// src/AcquiredCoursesPage.tsx
 import { useEffect, useRef, useState } from "react";
 import { Box } from "@mui/material";
 import {
@@ -10,18 +11,17 @@ import { db, auth } from "./firebase/firebase";
 import { courseToCard } from "./components/courseMapping";
 import type { FirestoreCourse, UserDoc } from "./components/courseMapping";
 import PageHeader from "./components/PageHeader";
+import LoadingOverlay from "./LoadingOverlay";
 
 export default function AcquiredCoursesPage() {
   const [uid, setUid] = useState<string | null>(null);
-  const [authReady, setAuthReady] = useState(false);        // 👈 wait for auth result
+  const [authReady, setAuthReady] = useState(false);
   const [items, setItems] = useState<ReturnType<typeof courseToCard>[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // creator profile cache
   const profilesRef = useRef<Record<string, UserDoc>>({});
   const fetchedUidsRef = useRef<Set<string>>(new Set());
 
-  // auth listener
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUid(u?.uid ?? null);
@@ -30,12 +30,9 @@ export default function AcquiredCoursesPage() {
     return () => unsub();
   }, []);
 
-  // purchases listener (runs only when uid changes)
   useEffect(() => {
-    // If we don't know auth yet, keep loading to avoid “no items” flash
     if (!authReady) return;
 
-    // No user → show sign-in prompt (CourseGrid handles it), no flicker
     if (!uid) {
       setItems([]);
       setLoading(false);
@@ -55,7 +52,6 @@ export default function AcquiredCoursesPage() {
           return;
         }
 
-        // 1) fetch courses by id in batches of 10
         const rows: { id: string; data: FirestoreCourse }[] = [];
         for (let i = 0; i < ids.length; i += 10) {
           const batch = ids.slice(i, i + 10);
@@ -67,13 +63,11 @@ export default function AcquiredCoursesPage() {
           );
         }
 
-        // 2) fetch any missing creator profiles (no dependency re-run)
         const uids = Array.from(
           new Set(rows.map((r) => r.data.creatorUid).filter(Boolean) as string[])
         );
         const missing = uids.filter((u) => !fetchedUidsRef.current.has(u));
 
-        // build a local merged profiles map without triggering the effect again
         const mergedProfiles: Record<string, UserDoc> = { ...profilesRef.current };
 
         for (let i = 0; i < missing.length; i += 10) {
@@ -83,17 +77,12 @@ export default function AcquiredCoursesPage() {
           );
           s.forEach((u) => {
             const data = u.data() as UserDoc;
-            mergedProfiles[u.id] = {
-              displayName: data.displayName,
-              photoURL: data.photoURL,
-            };
+            mergedProfiles[u.id] = { displayName: data.displayName, photoURL: data.photoURL };
             fetchedUidsRef.current.add(u.id);
           });
         }
-        // update the ref once after we fetched what we needed
         profilesRef.current = mergedProfiles;
 
-        // 3) sort & map to cards with purchased=true
         rows.sort((a, b) => {
           const ta = a.data.createdAt?.toDate?.().getTime?.() ?? 0;
           const tb = b.data.createdAt?.toDate?.().getTime?.() ?? 0;
@@ -102,13 +91,7 @@ export default function AcquiredCoursesPage() {
 
         const nextItems = rows.map(({ id, data }) => {
           const prof = data.creatorUid ? mergedProfiles[data.creatorUid] : undefined;
-          return courseToCard(
-            id,
-            data,
-            prof?.displayName ?? "Creator",
-            prof?.photoURL,
-            /* purchased */ true
-          );
+          return courseToCard(id, data, prof?.displayName ?? "Creator", prof?.photoURL, true);
         });
 
         setItems(nextItems);
@@ -122,18 +105,27 @@ export default function AcquiredCoursesPage() {
     );
 
     return () => unsub();
-  }, [uid, authReady]); // 👈 no `profiles` here
+  }, [uid, authReady]);
+
+  // ✅ Only show the grid (and therefore empty message) when NOT loading
+  const showSpinner = !authReady || loading;
+  const showGrid = authReady && !loading;
 
   return (
     <Box>
       <CustomAppBar showSearch={false} />
       <PageHeader title="Purchases Page" subtitle="A list of all the courses you have acquired!" />
-      <CourseGrid
-        items={items}
-        loading={loading}
-        emptyText="You haven’t acquired any courses yet."
-        showSignInPrompt={authReady && !uid}
-      />
+
+      {showGrid && (
+        <CourseGrid
+          items={items}
+          loading={false} // grid won't show its own loading text
+          emptyText="You haven’t acquired any courses yet."
+          showSignInPrompt={authReady && !uid}
+        />
+      )}
+
+      <LoadingOverlay open={showSpinner} />
     </Box>
   );
 }

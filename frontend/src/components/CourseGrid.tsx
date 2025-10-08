@@ -29,7 +29,6 @@ type Props = {
 
 export default function CourseGrid({
   items,
-  loading = false,
   emptyText = "No courses yet.",
   showSignInPrompt = false,
   onSignInClick,
@@ -37,14 +36,6 @@ export default function CourseGrid({
   onAcquire,
 }: Props) {
   const navigate = useNavigate();
-
-  if (loading) {
-    return (
-      <Box sx={{ px: 3, py: 3 }}>
-        <Typography variant="body2">Loading courses…</Typography>
-      </Box>
-    );
-  }
 
   if (showSignInPrompt) {
     return (
