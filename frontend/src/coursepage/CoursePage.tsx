@@ -6,6 +6,7 @@ import { auth, db } from "../firebase/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import CustomAppBar from "../components/customappbar/CustomAppBar";
+import LoadingOverlay from "../LoadingOverlay"; // ⬅️ reusable spinner
 
 type Lesson = { title: string; content: string };
 type CourseDoc = {
@@ -22,7 +23,7 @@ export default function CoursePage() {
   const [userUid, setUserUid] = useState<string | null>(null);
   const [course, setCourse] = useState<CourseDoc | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [resolvedIndex, setResolvedIndex] = useState(false); // ✅ gate initial render
+  const [resolvedIndex, setResolvedIndex] = useState(false); // gate initial render
 
   // auth
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function CoursePage() {
 
       const clamped = Math.max(0, Math.min(idx, Math.max(0, lessons.length - 1)));
       setCurrentIndex(clamped);
-      setResolvedIndex(true); // ✅ now we can render the lesson
+      setResolvedIndex(true); // now we can render the lesson
     })();
   }, [userUid, courseId, lessons.length, navigate]);
 
@@ -82,17 +83,8 @@ export default function CoursePage() {
 
   const current = useMemo(() => lessons[currentIndex] ?? null, [lessons, currentIndex]);
 
-  // ✅ Do not render the lesson view until both course and progress index are ready
-  if (!course || !resolvedIndex || !current) {
-    return (
-      <Box>
-        <CustomAppBar showSearch={false} />
-        <Container sx={{ py: 4 }}>
-          <Typography variant="body2">Loading course…</Typography>
-        </Container>
-      </Box>
-    );
-  }
+  // Spinner is open until both course AND progress index are ready
+  const showSpinner = !course || !resolvedIndex || !current;
 
   const onNext = async () => {
     const next = Math.min(currentIndex + 1, lessons.length - 1);
@@ -101,7 +93,7 @@ export default function CoursePage() {
   };
 
   const onPrevious = async () => {
-    const previous = Math.max(currentIndex - 1, 0); // ✅ fixed clamp
+    const previous = Math.max(currentIndex - 1, 0);
     setCurrentIndex(previous);
     await saveProgress(previous);
   };
@@ -109,34 +101,41 @@ export default function CoursePage() {
   return (
     <Box>
       <CustomAppBar showSearch={false} />
-      <Container sx={{ py: 4 }}>
-        <Typography variant="h4" sx={{ mb: 1 }}>
-          {course.title ?? "Course"}
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          Lesson {currentIndex + 1} of {lessons.length}
-        </Typography>
 
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h5" sx={{ mb: 1 }}>
-              {current.title}
-            </Typography>
-            <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-              {current.content}
-            </Typography>
-          </CardContent>
-        </Card>
+      {/* Content renders only when ready; otherwise the overlay covers the page */}
+      {!showSpinner && (
+        <Container sx={{ py: 4 }}>
+          <Typography variant="h4" sx={{ mb: 1 }}>
+            {course?.title ?? "Course"}
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            Lesson {currentIndex + 1} of {lessons.length}
+          </Typography>
 
-        <Box sx={{ display: "flex", gap: 2 }}>
-          <Button variant="outlined" disabled={currentIndex === lessons.length - 1} onClick={onNext}>
-            Next Lesson
-          </Button>
-          <Button variant="outlined" disabled={currentIndex === 0} onClick={onPrevious}>
-            Previous Lesson
-          </Button>
-        </Box>
-      </Container>
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h5" sx={{ mb: 1 }}>
+                {current!.title}
+              </Typography>
+              <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+                {current!.content}
+              </Typography>
+            </CardContent>
+          </Card>
+
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <Button variant="outlined" disabled={currentIndex === lessons.length - 1} onClick={onNext}>
+              Next Lesson
+            </Button>
+            <Button variant="outlined" disabled={currentIndex === 0} onClick={onPrevious}>
+              Previous Lesson
+            </Button>
+          </Box>
+        </Container>
+      )}
+
+      {/* Full-screen loading overlay (same look/feel as other pages) */}
+      <LoadingOverlay open={showSpinner} />
     </Box>
   );
 }
