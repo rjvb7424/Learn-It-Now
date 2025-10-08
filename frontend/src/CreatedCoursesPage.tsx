@@ -10,17 +10,25 @@ import {
   documentId,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+
 import CustomAppBar from "./components/customappbar/CustomAppBar";
-import CourseGrid from "./components/CourseGrid";
+import CourseGrid, { type CourseCardData } from "./components/CourseGrid";
 import { db, auth } from "./firebase/firebase";
 import { courseToCard } from "./components/courseMapping";
 import type { FirestoreCourse, UserDoc } from "./components/courseMapping";
 import PageHeader from "./components/PageHeader";
+import LoadingOverlay from "./LoadingOverlay"; // same reusable overlay
+
+import {
+  computeCourseStats,
+  type Lesson,
+  type CourseStats,
+} from "./homepage/courseStats";
 
 export default function MyCoursesPage() {
   const [uid, setUid] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [items, setItems] = useState<ReturnType<typeof courseToCard>[]>([]);
+  const [items, setItems] = useState<CourseCardData[]>([]);
   const [loading, setLoading] = useState(true);
 
   // cache creator profiles (uid -> {displayName, photoURL})
@@ -50,14 +58,22 @@ export default function MyCoursesPage() {
 
     // Only courses where creatorUid === current user
     // (no orderBy to avoid composite index; we’ll sort client-side)
-    const q = query(collection(db, "courses"), where("creatorUid", "==", uid));
+    const qRef = query(collection(db, "courses"), where("creatorUid", "==", uid));
 
     const unsub = onSnapshot(
-      q,
+      qRef,
       async (snap) => {
-        // collect docs
-        const rows: { id: string; data: FirestoreCourse }[] = [];
-        snap.forEach((d) => rows.push({ id: d.id, data: d.data() as FirestoreCourse }));
+        // collect docs (include optional lessons/stats for computing)
+        const rows: {
+          id: string;
+          data: FirestoreCourse & { lessons?: Lesson[]; stats?: CourseStats };
+        }[] = [];
+        snap.forEach((d) =>
+          rows.push({
+            id: d.id,
+            data: d.data() as FirestoreCourse & { lessons?: Lesson[]; stats?: CourseStats },
+          })
+        );
 
         if (rows.length === 0) {
           setItems([]);
@@ -94,15 +110,18 @@ export default function MyCoursesPage() {
           return tb - ta;
         });
 
-        // map to cards
-        const nextItems = rows.map(({ id, data }) => {
+        // map to CourseGrid items WITH stats
+        const nextItems: CourseCardData[] = rows.map(({ id, data }) => {
           const prof = data.creatorUid ? mergedProfiles[data.creatorUid] : undefined;
-          return courseToCard(
-            id,
-            data,
-            prof?.displayName ?? "Creator",
-            prof?.photoURL
-          );
+
+          const lessonsArr = Array.isArray(data.lessons) ? data.lessons : [];
+          const stats: CourseStats | undefined =
+            data.stats ?? (lessonsArr.length ? computeCourseStats(lessonsArr) : undefined);
+
+          return {
+            ...courseToCard(id, data, prof?.displayName ?? "Creator", prof?.photoURL),
+            stats, // -> CourseGrid -> CourseCard
+          };
         });
 
         setItems(nextItems);
@@ -118,16 +137,28 @@ export default function MyCoursesPage() {
     return () => unsub();
   }, [uid, authReady]);
 
+  // gate rendering so empty text appears only after loading completes
+  const showSpinner = !authReady || loading;
+  const showGrid = authReady && !loading;
+
   return (
     <Box>
       <CustomAppBar showSearch={false} />
-      <PageHeader title="Created Courses Page" subtitle="A list of all the Courses you’ve created!" />
-      <CourseGrid
-        items={items}
-        loading={loading}
-        emptyText="You haven’t created any courses yet."
-        showSignInPrompt={authReady && !uid}
+      <PageHeader
+        title="Created Courses Page"
+        subtitle="A list of all the Courses you’ve created!"
       />
+
+      {showGrid && (
+        <CourseGrid
+          items={items}
+          loading={false} // grid won't show its own loading copy
+          emptyText="You haven’t created any courses yet."
+          showSignInPrompt={authReady && !uid}
+        />
+      )}
+
+      <LoadingOverlay open={showSpinner} />
     </Box>
   );
 }
