@@ -2,6 +2,7 @@
 import { Box, Typography, Button } from "@mui/material";
 import CourseCard from "../homepage/CourseCard";
 import { useNavigate } from "react-router-dom";
+import type { CourseStats } from "../homepage/courseStats.ts";
 
 export type CourseCardData = {
   courseId: string;
@@ -13,6 +14,7 @@ export type CourseCardData = {
   authorInitials: string;
   avatarUrl?: string;
   date: string;        // preformatted (e.g., "Oct 3, 2025")
+  stats?: CourseStats;
 };
 
 type Props = {
@@ -87,6 +89,7 @@ export default function CourseGrid({
           description={c.description}
           price={c.price}
           purchased={!!c.purchased}
+          stats={c.stats}
           onOpenCourse={(id) => (onOpenCourse ? onOpenCourse(id) : navigate(`/course/${id}`))}
           onAcquire={(args) => onAcquire?.(args)}
         />

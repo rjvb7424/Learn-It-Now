@@ -1,6 +1,6 @@
 // src/homepage/HomePage.tsx
 import { useEffect, useRef, useState, useMemo } from "react";
-import { Box } from "@mui/material";
+import { Box, Backdrop, CircularProgress } from "@mui/material";
 import {
   collection, onSnapshot, orderBy, query, where, documentId, getDocs,
 } from "firebase/firestore";
@@ -13,6 +13,22 @@ import { courseToCard } from "../components/courseMapping";
 import type { FirestoreCourse, UserDoc } from "../components/courseMapping";
 import PageHeader from "../components/PageHeader";
 import { useCourseCheckout } from "../hooks/useCourseCheckout";
+
+type Lesson = { title: string; content: string };
+type Stats = { lessons: number; words: number; minutes: number };
+
+const WORDS_PER_MINUTE = 200;
+const countWords = (t: string) =>
+  t?.trim().match(/[A-Za-zÀ-ÖØ-öø-ÿ0-9’']+/g)?.length ?? 0;
+
+const computeStats = (lessons: Lesson[]): Stats => {
+  const words = lessons.reduce(
+    (s, l) => s + countWords(l.title) + countWords(l.content),
+    0
+  );
+  const minutes = Math.max(1, Math.ceil(words / WORDS_PER_MINUTE));
+  return { lessons: lessons.length, words, minutes };
+};
 
 export default function HomePage() {
   const [allItems, setAllItems] = useState<ReturnType<typeof courseToCard>[]>([]);
@@ -54,16 +70,17 @@ export default function HomePage() {
     };
   }, []);
 
-  // Load all courses + creator profiles
+  // Load all courses + creator profiles (+ stats)
   useEffect(() => {
     const qCourses = query(collection(db, "courses"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
       qCourses,
       async (snap) => {
         setLoading(true);
+
         const uids = new Set<string>();
         const raw = snap.docs.map((d) => {
-          const data = d.data() as FirestoreCourse;
+          const data = d.data() as FirestoreCourse & { lessons?: Lesson[]; stats?: Stats };
           if (data.creatorUid) uids.add(data.creatorUid);
           return { id: d.id, data };
         });
@@ -75,21 +92,35 @@ export default function HomePage() {
           const s = await getDocs(query(collection(db, "users"), where(documentId(), "in", batch)));
           const updates: Record<string, UserDoc> = {};
           s.forEach((u) => {
-            updates[u.id] = { displayName: u.data().displayName, photoURL: u.data().photoURL };
+            updates[u.id] = {
+              displayName: u.data().displayName,
+              photoURL: u.data().photoURL,
+            };
             fetchedUidsRef.current.add(u.id);
           });
-          if (Object.keys(updates).length) setProfiles((p) => ({ ...p, ...updates }));
+          if (Object.keys(updates).length) {
+            setProfiles((p) => ({ ...p, ...updates }));
+          }
         }
 
+        // build cards with stats precomputed
         const cards = raw.map(({ id, data }) => {
           const prof = data.creatorUid ? profiles[data.creatorUid] : undefined;
           const name = prof?.displayName ?? "Creator";
           const avatar = prof?.photoURL;
-          return courseToCard(id, data, name, avatar, purchasedIds.has(id));
+
+          const lessonsArr = Array.isArray(data.lessons) ? data.lessons : [];
+          const stats: Stats | undefined =
+            data.stats ?? (lessonsArr.length ? computeStats(lessonsArr) : undefined);
+
+          return {
+            ...courseToCard(id, data, name, avatar, purchasedIds.has(id)),
+            stats, // will flow to <CourseCard stats={...} />
+          };
         });
 
         setAllItems(cards);
-        setLoading(false);
+        setLoading(false); // hide loader only when cards+profiles+stats are ready
       },
       (err) => {
         console.error("Failed to load courses:", err);
@@ -100,7 +131,7 @@ export default function HomePage() {
     return () => unsub();
   }, [profiles, purchasedIds]);
 
-  // Filtered items derived from URL query (no effect, no warning)
+  // Filtered items derived from URL query
   const items = useMemo(() => {
     if (!q) return allItems;
     const queryStr = q.toLowerCase();
@@ -122,12 +153,25 @@ export default function HomePage() {
         subtitle={q ? "A list of courses matching your search." : "Browse all available courses in our platform!"}
       />
 
-      <CourseGrid
-        items={items}
-        loading={loading}
-        emptyText={q ? "No courses match your search." : "No courses yet."}
-        onAcquire={({ courseId }) => startCheckout(courseId)}  // ✅ paid path
-      />
+      {!loading && (
+        <CourseGrid
+          items={items}
+          loading={false}
+          emptyText={q ? "No courses match your search." : "No courses yet."}
+          onAcquire={({ courseId }) => startCheckout(courseId)}
+        />
+      )}
+
+      <Backdrop
+        open={loading}
+        sx={{
+          color: "#fff",
+          zIndex: (t) => t.zIndex.drawer + 2,
+          backdropFilter: "blur(1px)",
+        }}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Box>
   );
 }

@@ -8,7 +8,6 @@ import PricingPublishSection from "./components/PricingPublishSection";
 import type { Lesson } from "./Types";
 import { LIMITS } from "./Types";
 import type { Errors } from "./Types";
-import { computeCourseStats } from "./components/courseStats";
 
 // 👇 Firestore + Auth
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -78,9 +77,6 @@ export default function CreatePage() {
       content: l.content.trim(),
     }));
 
-    // ✅ compute stats once and store
-    const stats = computeCourseStats(trimmedLessons);
-
     const payload = {
       title: title.trim(),
       description: description.trim(),
@@ -88,7 +84,6 @@ export default function CreatePage() {
       isFree,
       price: isFree ? 0 : Number(price),
       creatorUid: user.uid,
-      stats, // <-- { lessons, words, minutes }
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
