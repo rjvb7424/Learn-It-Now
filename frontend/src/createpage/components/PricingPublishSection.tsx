@@ -27,8 +27,8 @@ type Props = {
   onReset: VoidFunction;
 };
 
-const MIN_PRICE_EUR = 2;
-const PLATFORM_FEE_RATE = 0.2;
+const MIN_PRICE_EUR = 1;           
+const PLATFORM_FEE_RATE = 0.3;
 
 const toNumberSafe = (v: string) => {
   const n = parseFloat(v || "0");
@@ -92,25 +92,25 @@ export default function PricingPublishSection({
 
         {!isFree && (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Buyers pay the course price plus a 20% platform fee. Estimated total: €{total.toFixed(2)}
+            Buyers pay the course price plus a 30% platform fee. Estimated total: €{total.toFixed(2)}
             {" "} (course €{priceNum.toFixed(2)} + fee €{fee.toFixed(2)}).
           </Typography>
         )}
 
         <Stack spacing={2}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={isFree}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setIsFree(checked);
-                  setPrice(checked ? "0.00" : MIN_PRICE_EUR.toFixed(2));
-                }}
-              />
-            }
-            label="Course is free"
-          />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={isFree}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setIsFree(checked);
+                setPrice(checked ? "0.00" : MIN_PRICE_EUR.toFixed(2)); // now 1.00
+              }}
+            />
+          }
+          label="Course is free"
+        />
 
           {!isFree && (
             <TextField

@@ -43,7 +43,7 @@ export default function CreatePage() {
     if (lessons.length === 0) errs.lessons = "Add at least one lesson.";
     if (lessons.some((l) => !l.title.trim() || !l.content.trim())) errs.lessonFields = "Fill all lesson fields.";
     if (!isFree) {
-      if (price === "" || Number(price) < 0.01) errs.price = `Enter a valid price between 0 and ${LIMITS.maxPrice}€`;
+      if (price === "" || Number(price) < 0.01) errs.price = `Enter a valid price between 1.00 and ${LIMITS.maxPrice}€`;
     }
     return errs;
   }, [title, description, lessons, price, isFree]);

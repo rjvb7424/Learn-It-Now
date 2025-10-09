@@ -10,7 +10,7 @@ const STRIPE_SECRET = defineSecret("STRIPE_SECRET");
 // ✅ pin a real API version
 const stripe = () => new Stripe(STRIPE_SECRET.value());
 
-const MIN_PRICE_EUR_CENTS = 200;
+const MIN_PRICE_EUR_CENTS = 100;
 
 const isValidUrl = (u?: string | null) => { try { new URL(String(u)); return true; } catch { return false; } };
 const normalizeOrigin = (raw?: string) => {
@@ -60,11 +60,11 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
 
     // 🚫 Enforce the €2 minimum
     if (baseAmount < MIN_PRICE_EUR_CENTS) {
-      res.status(400).json({ error: "Minimum course price is €2.00." });
+      res.status(400).json({ error: "Minimum course price is €1.00." });
       return;
     }
 
-    const platformFee = Math.round(baseAmount * 0.20);  // 20% fee (rounded)
+    const platformFee = Math.round(baseAmount * 0.30);  // 20% fee (rounded)
     const totalAmount = baseAmount + platformFee;       // what the buyer pays (before Stripe fees)
 
     // Create Checkout Session with two line items (course + fee)
@@ -90,7 +90,7 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
             currency,
             unit_amount: platformFee,
             product_data: {
-              name: "Service fee (20%)",
+              name: "Service fee (30%)",
               description: "Platform service fee",
             },
           },
