@@ -56,6 +56,7 @@ export default function CourseCard({
   const [purchased, setPurchased] = useState<boolean>(!!purchasedProp);
   const [open, setOpen] = useState(false);
   const isFree = !price || Number(price) === 0;
+  const [acquiring, setAcquiring] = useState(false);
 
   // ✅ single stats state, seeded by parent
   const [stats, setStats] = useState<Stats | null>(prefetchedStats ?? null);
@@ -90,7 +91,7 @@ export default function CourseCard({
   }, [user, courseId, purchasedProp]);
 
   // --- UI below unchanged ---
-  const handlePrimaryButton = () => setOpen(true);
+  const handlePrimaryButton = () => { setAcquiring(false); setOpen(true); };
   const handleSignIn = async () => { await SignIn(); };
 
   const acquireFreeAndOpen = async () => {
@@ -111,13 +112,27 @@ export default function CourseCard({
 
   const handleDialogPrimary = async () => {
     if (!user) return;
-    if (purchased) { setOpen(false); onOpenCourse?.(courseId); return; }
-    if (isFree) { acquireFreeAndOpen(); return; }
-    try {
-      await onAcquire?.({ title, price: Number(price) || 0, description, courseId });
+
+    if (purchased) {
       setOpen(false);
+      onOpenCourse?.(courseId);
+      return;
+    }
+
+    if (isFree) {
+      await acquireFreeAndOpen();
+      return;
+    }
+
+    // Paid path → disable button immediately
+    try {
+      setAcquiring(true); // NEW
+      await onAcquire?.({ title, price: Number(price) || 0, description, courseId });
+      // Redirect happens inside onAcquire; no need to re-enable here
+      // Keep dialog as-is; the page will navigate away
     } catch (e) {
       console.error(e);
+      setAcquiring(false); // NEW: re-enable on failure
     }
   };
 
@@ -226,12 +241,20 @@ export default function CourseCard({
                 </Typography>
               </Box>
             </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setOpen(false)}>Close</Button>
-              <Button variant="contained" onClick={handleDialogPrimary}>
-                {purchased ? "Continue" : isFree ? "Get Started" : "Acquire"}
-              </Button>
-            </DialogActions>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Close</Button>
+          <Button
+            variant="contained"
+            onClick={handleDialogPrimary}
+            disabled={acquiring}
+          >
+            {purchased
+              ? "Continue"
+              : isFree
+              ? (acquiring ? "Processing..." : "Get Started")
+              : (acquiring ? "Redirecting..." : "Acquire")}
+          </Button>
+        </DialogActions>
           </>
         )}
       </Dialog>
