@@ -56,23 +56,29 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
 
     // ---------- Pricing (EUR) ----------
     const currency = "eur";
-    const baseAmount = cents(course.price!);            // course price in cents
+    const baseAmount = cents(course.price!);
 
-    // 🚫 Enforce the €2 minimum
+    // 🚫 Enforce the €1 minimum  // (fixed comment)
     if (baseAmount < MIN_PRICE_EUR_CENTS) {
       res.status(400).json({ error: "Minimum course price is €1.00." });
       return;
     }
 
-    const platformFee = Math.round(baseAmount * 0.30);  // 20% fee (rounded)
-    const totalAmount = baseAmount + platformFee;       // what the buyer pays (before Stripe fees)
+    const platformFee = Math.round(baseAmount * 0.30);  // 30% fee (rounded)  // (fixed comment)
+    const totalAmount = baseAmount + platformFee;
 
     // Create Checkout Session with two line items (course + fee)
     const session = await stripe().checkout.sessions.create({
       mode: "payment",
       success_url,
       cancel_url,
-            line_items: [
+
+      // ✅ make every buyer a Stripe Customer on YOUR platform
+      customer_creation: "always",
+      client_reference_id: uid,
+      // customer_email: buyerEmail ?? undefined,  // <- optional if you have it server-side
+
+      line_items: [
         {
           quantity: 1,
           price_data: {
@@ -97,15 +103,13 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
         },
       ],
       payment_intent_data: {
-        // funds to creator
-        transfer_data: { destination: creator.stripeAccountId! },
-
-        // your platform fee
-        application_fee_amount: platformFee,
+        transfer_data: { destination: creator.stripeAccountId! }, // funds to creator
+        application_fee_amount: platformFee,                       // your platform fee
         metadata: { uid, courseId },
       },
       metadata: { uid, courseId },
     });
+
 
     res.json({ url: session.url, id: session.id, totalAmount });
   } catch (err: any) {
@@ -114,6 +118,18 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
     res.status(500).json({ error: err?.message || "Unknown error" });
   }
 });
+
+// ----- helper to estimate Stripe fees on the whole charge (tune these) -----
+const estimateStripeFee = (amountCents: number, currency: string) => {
+  // Pick sensible defaults; adjust to your account’s live rates.
+  const cur = currency.toLowerCase();
+  let pct = 0.015;    // 1.5%
+  let fixed = 25;     // €0.25 (cents)
+
+  if (cur === "gbp") { pct = 0.025; fixed = 20; } // 2.5% + £0.20 (UK example)
+
+  return Math.round(amountCents * pct + fixed);
+};
 
 export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res): Promise<void> => {
   try {
@@ -143,9 +159,10 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
     const courseSnap = await db.doc(`courses/${courseId}`).get();
 
     // Optional integrity check: expected total = base + 20% fee
+    // Optional integrity check: expected total = base + 30% fee   // (fixed)
     if (courseSnap.exists && session.amount_total != null) {
       const base = cents((courseSnap.data() as any)?.price ?? 0);
-      const fee  = Math.round(base * 0.20);
+      const fee  = Math.round(base * 0.30);
       const expectedTotal = base + fee;
       if (expectedTotal !== session.amount_total) {
         logger.warn("Amount mismatch on finalize", {
@@ -155,27 +172,42 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
     }
 
     // Persist purchase with amounts for your dashboard
-    const totalCents = session.amount_total ?? 0;
-    const feeCents   = typeof pi?.application_fee_amount === "number" ? pi.application_fee_amount : 0;
-    const currency   = (session.currency || "eur").toUpperCase();
+    const totalCents  = session.amount_total ?? 0; // buyer paid (course + fee)
+    const feeCents    = typeof pi?.application_fee_amount === "number" ? pi.application_fee_amount : 0; // your fee
+    const currency    = (session.currency || "eur").toUpperCase();
+    const customerId  = typeof session.customer === "string" ? session.customer : session.customer?.id;
+
+    // 💡 estimate Stripe processing fee on the whole charge so you see an internal "platform net"
+    const estimatedStripeFeeCents = estimateStripeFee(totalCents, currency);
+    const platformNetCents        = Math.max(0, feeCents - estimatedStripeFeeCents);
 
     await db.doc(`users/${uid}/purchases/${courseId}`).set(
       {
         acquiredAt: FieldValue.serverTimestamp(),
         currentLessonIndex: 0,
-        amount: totalCents / 100,               // buyer paid (course + fee)
-        platformFee: feeCents / 100,            // your cut
-        creatorGross: (totalCents - feeCents) / 100, // before Stripe processing fees
+
+        // Buyer totals
+        amount: totalCents / 100,                 // total paid by buyer (course + fee)
         currency,
+
+        // Platform revenue views
+        platformFee: feeCents / 100,              // your gross fee (from application_fee)
+        platformProcessingEstimate: estimatedStripeFeeCents / 100,
+        platformNet: platformNetCents / 100,      // "your money" after estimated processing
+
+        // Creator gross before their own Stripe fees (in your current model creators don't pay fees)
+        creatorGross: (totalCents - feeCents) / 100,
+
         stripe: {
           sessionId: session.id,
           paymentIntentId: typeof pi === "string" ? pi : pi?.id,
+          customerId: customerId ?? null,         // ← lets you reconcile "New customers"
         },
       },
       { merge: true }
     );
 
-    res.json({ ok: true, courseId });
+    res.json({ ok: true, courseId, customerId });
   } catch (err: any) {
     try { logger.error("finalizeCheckout", JSON.stringify(err, Object.getOwnPropertyNames(err))); }
     catch { logger.error("finalizeCheckout", err); }
