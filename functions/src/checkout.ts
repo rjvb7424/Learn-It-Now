@@ -7,6 +7,7 @@ import "./adminInit";
 import * as logger from "firebase-functions/logger";
 import { FieldValue } from "firebase-admin/firestore";
 import type Stripe from "stripe";
+import "./adminInit";
 
 export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res) => {
 try {

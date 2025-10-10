@@ -5,6 +5,7 @@ import { logError, parseJson, sendBad, sendOk } from "./http";
 import { getUserDoc, upsertUser, type UserDoc } from "./firestore";
 import { splitName } from "./people";
 import type Stripe from "stripe";
+import "./adminInit";
 
 // ---------- createAccount (prefill business_profile) ----------
 export const createAccount = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res) => {
