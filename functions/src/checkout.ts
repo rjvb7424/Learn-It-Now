@@ -33,8 +33,10 @@ if (!creator?.stripeAccountId || !creator?.stripeOnboarded) {
 return sendBad(res, "Creator is not onboarded to Stripe");
 }
 
+const SUCCESS_PATH = "/checkout/success";
+
 const origin = normalizeOrigin((req.headers.origin as string | undefined), FALLBACK_ORIGIN);
-const success_url = buildUrl(origin, `/checkout/success?course=${encodeURIComponent(courseId)}&session_id={CHECKOUT_SESSION_ID}`);
+const success_url = buildUrl(origin, `${SUCCESS_PATH}?course=${encodeURIComponent(courseId)}&session_id={CHECKOUT_SESSION_ID}`);
 const cancel_url = buildUrl(origin, `/?canceled=1`);
 
 // ---------- Pricing (EUR) ----------

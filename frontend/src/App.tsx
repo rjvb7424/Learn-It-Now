@@ -30,16 +30,7 @@ export default function App() {
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/return/:accountId" element={<ReturnPage />} />
           <Route path="/refresh/:accountId" element={<RefreshPage />} />
-
-          {/* ✅ Stripe Checkout redirect lands here */}
-          <Route
-            path="/checkout/success"
-            element={
-              <ProtectedRoute>
-                <CheckoutSuccess />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/checkout/success" element={<CheckoutSuccess />} />
 
           {/* Auth-only */}
           <Route path="/purchases" element={<ProtectedRoute><AcquiredCoursesPage /></ProtectedRoute>} />
