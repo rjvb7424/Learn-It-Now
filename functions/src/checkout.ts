@@ -9,6 +9,8 @@ import { FieldValue } from "firebase-admin/firestore";
 import type Stripe from "stripe";
 import "./adminInit";
 
+// To Do: Fix "You cannot create a charge on a connected account without the `card_payments` capability enabled."
+
 // CREATE CHECKOUT — direct charge on the creator's account
 export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res) => {
   try {
