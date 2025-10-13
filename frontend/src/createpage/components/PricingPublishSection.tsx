@@ -90,12 +90,14 @@ export default function PricingPublishSection({
           Pricing &amp; Publish
         </Typography>
 
-        {!isFree && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Buyers pay the course price plus a 30% platform fee. Estimated total: €{total.toFixed(2)}
-            {" "} (course €{priceNum.toFixed(2)} + fee €{fee.toFixed(2)}).
-          </Typography>
-        )}
+      {!isFree && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Buyers pay the course price plus a <b>30% platform fee</b>.{" "}
+          <b>A separate payment processing fee will also be deducted from the
+          creator’s payout</b> (card/network fees taken by Stripe).{" "}
+          Estimated buyer total: €{total.toFixed(2)} (course €{priceNum.toFixed(2)} + platform fee €{fee.toFixed(2)}).
+        </Typography>
+      )}
 
         <Stack spacing={2}>
         <FormControlLabel
