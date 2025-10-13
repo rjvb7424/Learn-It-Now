@@ -46,12 +46,11 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
     if (baseAmount < MIN_PRICE_EUR_CENTS) { sendBad(res, "Minimum course price is €1.00."); return; }
     const platformFee = Math.round(baseAmount * 0.30); // 30%
 
-    // Dashboard strings
     const chargeDescription =
       `Course: ${course.title || "Untitled"} CourseID: ${courseId} BuyerUID: ${uid} CreatorUID: ${course.creatorUid}`;
     const transferGroup = `course:${courseId}`;
 
-    // IMPORTANT: Create the session **on the connected account** (direct charge)
+    // Create the session on the CONNECTED account (Direct Charge).
     const session = await getStripe().checkout.sessions.create(
       {
         mode: "payment",
@@ -60,6 +59,7 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
         customer_creation: "always",
         client_reference_id: uid,
 
+        // Show price split to the buyer (optional second line item for visibility)
         line_items: [
           {
             quantity: 1,
@@ -86,10 +86,10 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
         ],
 
         payment_intent_data: {
-          // Direct charge: the PI lives on the connected account; Stripe fees are paid by the creator.
-          // App fee is taken from the connected account and paid to your platform.
+          // For a Direct charge, Stripe fees are taken from the connected account (creator).
+          // This transfers your cut to the platform.
           application_fee_amount: platformFee,
-          on_behalf_of: creatorAccountId,          // nice-to-have for clarity/compliance
+          // ❌ REMOVE on_behalf_of to avoid "cannot be set to your own account"
           transfer_group: transferGroup,
           description: chargeDescription,
           metadata: {
@@ -102,18 +102,10 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
           },
         },
 
-        // also on the session
         metadata: { uid, courseId, transferGroup },
       },
-      { stripeAccount: creatorAccountId } // 👈 this makes it a DIRECT charge
+      { stripeAccount: creatorAccountId } // Direct charge context
     );
-
-    // Save a tiny mapping so finalize knows which connected account to read from
-    await db.doc(`checkoutSessions/${session.id}`).set({
-      courseId,
-      creatorAccountId,
-      createdAt: FieldValue.serverTimestamp(),
-    });
 
     sendOk(res, { url: session.url, id: session.id, totalAmount: baseAmount + platformFee });
   } catch (err) {
