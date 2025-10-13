@@ -1,96 +1,113 @@
+// functions/src/checkout.ts
 import { onRequest } from "firebase-functions/v2/https";
 import { getStripe, MIN_PRICE_EUR_CENTS, STRIPE_SECRET, FALLBACK_ORIGIN } from "./config";
 import { buildUrl, normalizeOrigin } from "./url";
 import { db } from "./firestore";
 import { parseJson, sendBad, sendOk, toCents } from "./http";
-import "./adminInit";
 import * as logger from "firebase-functions/logger";
 import { FieldValue } from "firebase-admin/firestore";
 import type Stripe from "stripe";
 import "./adminInit";
 
 export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res) => {
-try {
-const { uid, courseId } = parseJson<{ uid?: string; courseId?: string }>(req);
-if (!uid) { sendBad(res, "Missing uid"); return; }
-if (!courseId) return sendBad(res, "Missing courseId");
+  try {
+    const { uid, courseId } = parseJson<{ uid?: string; courseId?: string }>(req);
+    if (!uid) { sendBad(res, "Missing uid"); return; }
+    if (!courseId) { sendBad(res, "Missing courseId"); return; }
 
-// Load course (server-trusted)
-const courseSnap = await db.doc(`courses/${courseId}`).get();
-if (!courseSnap.exists) return sendBad(res, "Course not found", 404);
+    // Load course (server-trusted)
+    const courseSnap = await db.doc(`courses/${courseId}`).get();
+    if (!courseSnap.exists) { sendBad(res, "Course not found", 404); return; }
 
-const course = courseSnap.data() as {
-title?: string; description?: string; price?: number; isFree?: boolean; creatorUid?: string
-};
+    const course = courseSnap.data() as {
+      title?: string; description?: string; price?: number; isFree?: boolean; creatorUid?: string
+    };
 
-if (!course.creatorUid) return sendBad(res, "Course missing creatorUid");
-if (course.isFree || !(course.price! > 0)) return sendBad(res, "Course is free");
+    if (!course.creatorUid) { sendBad(res, "Course missing creatorUid"); return; }
+    if (course.isFree || !(course.price! > 0)) { sendBad(res, "Course is free"); return; }
 
-// Load creator connected account
-const creatorSnap = await db.doc(`users/${course.creatorUid}`).get();
-const creator = creatorSnap.data() as { stripeAccountId?: string; stripeOnboarded?: boolean } | undefined;
-if (!creator?.stripeAccountId || !creator?.stripeOnboarded) {
-return sendBad(res, "Creator is not onboarded to Stripe");
-}
+    // Load creator connected account
+    const creatorSnap = await db.doc(`users/${course.creatorUid}`).get();
+    const creator = creatorSnap.data() as { stripeAccountId?: string; stripeOnboarded?: boolean } | undefined;
+    if (!creator?.stripeAccountId || !creator?.stripeOnboarded) {
+      sendBad(res, "Creator is not onboarded to Stripe"); return;
+    }
 
-const SUCCESS_PATH = "/checkout/success";
+    const SUCCESS_PATH = "/checkout/success";
+    const origin = normalizeOrigin((req.headers.origin as string | undefined), FALLBACK_ORIGIN);
+    const success_url = buildUrl(origin, `${SUCCESS_PATH}?course=${encodeURIComponent(courseId)}&session_id={CHECKOUT_SESSION_ID}`);
+    const cancel_url  = buildUrl(origin, `/?canceled=1`);
 
-const origin = normalizeOrigin((req.headers.origin as string | undefined), FALLBACK_ORIGIN);
-const success_url = buildUrl(origin, `${SUCCESS_PATH}?course=${encodeURIComponent(courseId)}&session_id={CHECKOUT_SESSION_ID}`);
-const cancel_url = buildUrl(origin, `/?canceled=1`);
+    // ---------- Pricing ----------
+    const currency = "eur";
+    const baseAmount = toCents(course.price!);
+    if (baseAmount < MIN_PRICE_EUR_CENTS) { sendBad(res, "Minimum course price is €1.00."); return; }
+    const platformFee = Math.round(baseAmount * 0.30); // 30%
 
-// ---------- Pricing (EUR) ----------
-const currency = "eur";
-const baseAmount = toCents(course.price!);
+    // Human-readable description & grouping
+    const chargeDescription =
+      `Course: ${course.title || "Untitled"} • CourseID: ${courseId} • BuyerUID: ${uid} • CreatorUID: ${course.creatorUid}`;
+    const transferGroup = `course:${courseId}`;
 
-if (baseAmount < MIN_PRICE_EUR_CENTS) return sendBad(res, "Minimum course price is €1.00.");
+    const session = await getStripe().checkout.sessions.create({
+      mode: "payment",
+      success_url,
+      cancel_url,
+      customer_creation: "always",
+      client_reference_id: uid,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: baseAmount,
+            product_data: {
+              name: course.title || "Course",
+              description: (course.description || "").slice(0, 500),
+            },
+          },
+        },
+        {
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: platformFee,
+            product_data: {
+              name: "Service fee (30%)",
+              description: "Platform service fee",
+            },
+          },
+        },
+      ],
+      payment_intent_data: {
+        transfer_data: { destination: creator.stripeAccountId! },
+        application_fee_amount: platformFee,
 
-const platformFee = Math.round(baseAmount * 0.30); // 30% fee (rounded)
+        // clearer dashboard/exports
+        description: chargeDescription,
+        statement_descriptor_suffix: "LEARN IT NOW", // ≤22 chars
+        transfer_group: transferGroup,
 
-// Create Checkout Session (course + fee as two line items)
-const session = await getStripe().checkout.sessions.create({
-  mode: "payment",
-  success_url,
-  cancel_url,
-  customer_creation: "always",
-  client_reference_id: uid,
-  line_items: [
-    {
-      quantity: 1,
-      price_data: {
-        currency,
-        unit_amount: baseAmount,
-        product_data: {
-          name: course.title || "Course",
-          description: (course.description || "").slice(0, 500),
+        metadata: {
+          uid,
+          courseId,
+          creatorUid: course.creatorUid!,
+          baseAmountCents: String(baseAmount),
+          platformFeeCents: String(platformFee),
+          currency,
         },
       },
-    },
-    {
-      quantity: 1,
-      price_data: {
-        currency,
-        unit_amount: platformFee,
-        product_data: {
-          name: "Service fee (30%)",
-          description: "Platform service fee",
-        },
-      },
-    },
-  ],
-  payment_intent_data: {
-    transfer_data: { destination: creator.stripeAccountId! },
-    application_fee_amount: platformFee,
-    metadata: { uid, courseId },
-  },
-  metadata: { uid, courseId },
-});
+      metadata: { uid, courseId, transferGroup },
+    });
 
-  res.json({ url: session.url });
-} catch (error) {
-  console.error(error);
-  sendBad(res, "Internal server error", 500);
-}
+    // use session so TS doesn’t complain it’s unused
+    sendOk(res, { url: session.url, id: session.id, totalAmount: baseAmount + platformFee });
+    return;
+  } catch (err) {
+    logger.error("createCheckout", err as any);
+    sendBad(res, (err as any)?.message || "Unknown error", 500);
+    return;
+  }
 });
 
 export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res) => {
@@ -101,7 +118,7 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
 
     const s = getStripe();
 
-    // Expand all we need so we can read real processing fee
+    // Expand to get actual Stripe processing fee from balance transaction
     const session = await s.checkout.sessions.retrieve(sessionId, {
       expand: ["payment_intent", "payment_intent.latest_charge.balance_transaction"],
     });
@@ -117,7 +134,7 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
     const metaUid  = (session.metadata?.uid      || (pi.metadata as any)?.uid)      as string | undefined;
     if (!courseId || !metaUid || metaUid !== uid) { sendBad(res, "Metadata missing or UID mismatch"); return; }
 
-    // Optional integrity check (base + 30% fee)
+    // Integrity check (base + 30% fee)
     const courseSnap = await db.doc(`courses/${courseId}`).get();
     if (courseSnap.exists && session.amount_total != null) {
       const base = toCents((courseSnap.data() as any)?.price ?? 0);
@@ -128,13 +145,11 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
       }
     }
 
-    // --- Platform application fee (your fee) ---
+    // Application fee (your 30%)
     const applicationFeeCents = typeof pi.application_fee_amount === "number" ? pi.application_fee_amount : 0;
 
-    // --- Stripe processing fee (actual) from balance transaction ---
-    // Try to use expanded latest_charge → balance_transaction, else fetch it.
+    // Stripe processing fee (actual) from balance transaction
     let processingFeeCents = 0;
-
     const latestCharge = pi.latest_charge as string | Stripe.Charge | null | undefined;
     let bt: string | Stripe.BalanceTransaction | null | undefined;
 
@@ -148,7 +163,6 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
       const btObj = await s.balanceTransactions.retrieve(bt);
       processingFeeCents = btObj.fee ?? 0;
     } else if (typeof latestCharge === "string") {
-      // Fallback: retrieve charge, then its balance transaction
       const chargeObj = await s.charges.retrieve(latestCharge, { expand: ["balance_transaction"] });
       const btx = chargeObj.balance_transaction as string | Stripe.BalanceTransaction | null | undefined;
       if (btx && typeof btx !== "string") {
@@ -159,32 +173,11 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
       }
     }
 
-    const totalCents  = session.amount_total ?? 0;
-    const currency    = (session.currency || "EUR").toUpperCase();
     const customerId  = typeof session.customer === "string" ? session.customer : session.customer?.id;
-
-    // Net to your platform after Stripe processing
-    const platformNetCents = Math.max(0, applicationFeeCents - processingFeeCents);
 
     await db.doc(`users/${uid}/purchases/${courseId}`).set({
       acquiredAt: FieldValue.serverTimestamp(),
       currentLessonIndex: 0,
-
-      amount: totalCents / 100,        // buyer paid (course + fee)
-      currency,
-
-      platformFee: applicationFeeCents / 100,          // your gross fee (application_fee)
-      platformProcessingActual: processingFeeCents / 100, // actual Stripe processing fee
-      platformNet: platformNetCents / 100,             // your net after Stripe fees
-
-      creatorGross: (totalCents - applicationFeeCents) / 100,
-
-      stripe: {
-        sessionId: session.id,
-        paymentIntentId: pi.id,
-        customerId: customerId ?? null,
-        chargeId: typeof latestCharge === "string" ? latestCharge : latestCharge?.id ?? null,
-      },
     }, { merge: true });
 
     sendOk(res, { ok: true, courseId, customerId });
