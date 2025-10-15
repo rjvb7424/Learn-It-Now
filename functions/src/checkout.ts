@@ -123,29 +123,43 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
   }
 });
 
-// FINALIZE — read the session & PI from the PLATFORM account, then transfer (base - fee_on_base) to creator, grant access
+// FINALIZE — read the Session on PLATFORM, transfer payout to creator from the charge, grant access
 export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res) => {
   try {
     const { uid, sessionId } = parseJson<{ uid?: string; sessionId?: string }>(req);
     if (!uid) { sendBad(res, "Missing uid"); return; }
     if (!sessionId) { sendBad(res, "Missing sessionId"); return; }
 
-    // Look up mapping saved at checkout time
-    const linkSnap = await db.doc(`checkoutSessions/${sessionId}`).get();
-    if (!linkSnap.exists) { sendBad(res, "Unknown session"); return; }
-    const { courseId, creatorAccountId, baseAmountCents, platformFeeCents, currency, transferGroup } =
-      linkSnap.data() as {
-        courseId: string;
-        creatorAccountId: string;
-        baseAmountCents: number;
-        platformFeeCents: number;
-        currency: string;
-        transferGroup: string;
-      };
-
     const stripe = getStripe();
 
-    // Retrieve Session on the PLATFORM and expand to reach the charge + balance transaction
+    // 1) Load our mapping (for amounts etc.)
+    const linkSnap = await db.doc(`checkoutSessions/${sessionId}`).get();
+    if (!linkSnap.exists) { sendBad(res, "Unknown session"); return; }
+    const link = linkSnap.data() as {
+      courseId: string;
+      creatorAccountId: string;
+      baseAmountCents: number;
+      platformFeeCents: number;
+      currency: string;
+      transferGroup: string;
+    };
+    const { courseId, baseAmountCents, platformFeeCents, transferGroup } = link;
+
+    // 2) Re-confirm creator account id from the course->user doc (avoid stale/mismatched IDs)
+    const courseDoc = await db.doc(`courses/${courseId}`).get();
+    if (!courseDoc.exists) { sendBad(res, "Course not found"); return; }
+    const course = courseDoc.data() as { creatorUid?: string };
+    if (!course?.creatorUid) { sendBad(res, "Course missing creatorUid"); return; }
+
+    const creatorDoc = await db.doc(`users/${course.creatorUid}`).get();
+    if (!creatorDoc.exists) { sendBad(res, "Creator not found"); return; }
+    const creator = creatorDoc.data() as { stripeAccountId?: string; stripeOnboarded?: boolean };
+    const creatorAccountId = creator?.stripeAccountId;
+    if (!creatorAccountId || !creator?.stripeOnboarded) {
+      sendBad(res, "Creator is not onboarded to Stripe"); return;
+    }
+
+    // 3) Retrieve Session & PI from PLATFORM and expand the latest charge & its balance txn
     const session = await stripe.checkout.sessions.retrieve(
       sessionId,
       { expand: ["payment_intent", "payment_intent.latest_charge.balance_transaction"] }
@@ -155,57 +169,63 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
     const pi = session.payment_intent as Stripe.PaymentIntent | null;
     if (!pi) { sendBad(res, "Missing payment_intent"); return; }
 
-    // Confirm paid
     const paid = session.payment_status === "paid" || pi.status === "succeeded";
     if (!paid) { sendBad(res, "Payment not completed"); return; }
 
-    // (Optional) sanity check on UID
+    // (Optional) sanity check UID
     const metaUid = (session.metadata?.uid || (pi.metadata as any)?.uid) as string | undefined;
     if (metaUid && metaUid !== uid) { sendBad(res, "UID mismatch"); return; }
 
-    // Get the charge (expanded above), fallback to fetch if necessary
+    // 4) Charge object (expanded). Fallback retrieve if needed.
     const latestCharge = pi.latest_charge as Stripe.Charge | string | null;
     if (!latestCharge) { sendBad(res, "Missing charge"); return; }
     const chargeObj: Stripe.Charge = typeof latestCharge === "string"
       ? await stripe.charges.retrieve(latestCharge)
       : latestCharge;
 
-    // Exact Stripe processing fee for this charge
-    let processingFeeCents = 0;
+    // Real processing fee from the balance transaction
+    let totalFeeCents = 0;
     const bt = chargeObj.balance_transaction as Stripe.BalanceTransaction | string | null | undefined;
     if (bt && typeof bt !== "string") {
-      processingFeeCents = bt.fee ?? 0;
+      totalFeeCents = bt.fee ?? 0;
     } else if (typeof bt === "string") {
       const fetched = await stripe.balanceTransactions.retrieve(bt);
-      processingFeeCents = fetched.fee;
+      totalFeeCents = fetched.fee;
     }
 
-    // Numbers (all in smallest currency unit)
-    const grossCents = chargeObj.amount; // base + platform fee actually charged
-    const totalFeeCents = processingFeeCents;
-
+    // Amounts
     const base = Math.max(Number(baseAmountCents) || 0, 0);
     const plat = Math.max(Number(platformFeeCents) || 0, 0);
-    const gross = Math.max(grossCents || base + plat, base + plat);
+    const gross = Math.max(chargeObj.amount || base + plat, base + plat);
+    const chargeCurrency = chargeObj.currency || "eur";
 
-    // Prorate total Stripe fee so creator only pays fee on base
+    // Prorate fee so creator only pays fee on base
     const feeOnBase = Math.min(Math.round(totalFeeCents * (base / (gross || 1))), totalFeeCents);
     const feeOnPlatform = totalFeeCents - feeOnBase;
-
-    // Creator payout
     const payout = Math.max(base - feeOnBase, 0);
 
-    // --- Ensure destination account can receive transfers ---
+    // 5) Validate connected account can receive transfers
     const acct = await stripe.accounts.retrieve(creatorAccountId);
+    const acctType = (acct as any)?.type; // "standard" | "express" | "custom"
     const transfersCap = (acct as any)?.capabilities?.transfers;
+
+    // Transfers API is NOT supported for Standard accounts
+    if (acctType === "standard") {
+      sendBad(res,
+        "Creator account is a Standard Connect account; transfers are not supported. " +
+        "Use Direct charges with application_fee_amount, or switch creators to Express."
+      );
+      return;
+    }
+
+    // For Express/Custom we also require transfers capability
     const canTransfer = transfersCap === "active" || transfersCap === "pending";
     if (!canTransfer) {
       sendBad(res, "Creator account cannot receive transfers (transfers capability not active). Ask the creator to finish onboarding.");
       return;
     }
-    // Note: payouts_enabled may be false; you can still transfer to their Stripe balance. Bank payout depends on their schedule.
 
-    // --- Create transfer from THIS charge so funds show up immediately ---
+    // 6) Create the transfer FROM THIS CHARGE so it lands immediately in the connected balance
     const idemKey = `transfer:${sessionId}`;
     let transfer: Stripe.Response<Stripe.Transfer> | null = null;
 
@@ -213,14 +233,15 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
       transfer = await stripe.transfers.create(
         {
           amount: payout,
-          currency: (currency || "eur"),
+          currency: chargeCurrency,
           destination: creatorAccountId,
           transfer_group: transferGroup || `course:${courseId}`,
-          source_transaction: chargeObj.id, // key part: draws from this charge even if pending
+          source_transaction: chargeObj.id, // key bit
           metadata: {
             sessionId,
             courseId,
             uid,
+            creatorUid: course.creatorUid!,
             baseAmountCents: String(base),
             platformFeeCents: String(plat),
             grossChargeCents: String(gross),
@@ -232,18 +253,19 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
         { idempotencyKey: idemKey }
       );
     } catch (e: any) {
-      // Some payment methods don’t support source_transaction; fall back to a normal transfer
+      // Some payment methods don’t allow source_transaction; fall back to a normal transfer
       if (e?.type === "invalid_request_error" || e?.code === "parameter_unknown") {
         transfer = await stripe.transfers.create(
           {
             amount: payout,
-            currency: (currency || "eur"),
+            currency: chargeCurrency,
             destination: creatorAccountId,
             transfer_group: transferGroup || `course:${courseId}`,
             metadata: {
               sessionId,
               courseId,
               uid,
+              creatorUid: course.creatorUid!,
               baseAmountCents: String(base),
               platformFeeCents: String(plat),
               grossChargeCents: String(gross),
@@ -262,27 +284,27 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
       }
     }
 
-    // --- Grant access to the course ---
+    // 7) Grant access
     await db.doc(`users/${uid}/purchases/${courseId}`).set(
-      {
-        acquiredAt: FieldValue.serverTimestamp(),
-        currentLessonIndex: 0,
-      },
+      { acquiredAt: FieldValue.serverTimestamp(), currentLessonIndex: 0 },
       { merge: true }
     );
 
-    // Respond with useful settlement details
     sendOk(res, {
       ok: true,
       courseId,
+      chargeId: chargeObj.id,
+      transferId: transfer?.id ?? null,
       customerId: typeof session.customer === "string" ? session.customer : session.customer?.id ?? null,
       creatorPayoutCents: payout,
       processingFeeCents: totalFeeCents,
       processingFeeOnBaseCents: feeOnBase,
       processingFeeOnPlatformCents: feeOnPlatform,
       platformFeeCents: plat,
-      transferId: transfer?.id ?? null,
-      chargeId: chargeObj.id,
+      currency: chargeCurrency,
+      creatorAccountId,
+      accountType: acctType,
+      transfersCapability: transfersCap,
     });
   } catch (err) {
     logger.error("finalizeCheckout", err as any);
