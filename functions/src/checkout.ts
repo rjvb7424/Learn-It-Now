@@ -179,15 +179,25 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
       processingFeeCents = fetched.fee;
     }
 
-    // Compute creator payout = base - processing fee (never negative)
-    const base = Number(baseAmountCents) || 0;
-    const fee = Math.min(Number(processingFeeCents) || 0, base);
-    const payout = Math.max(base - fee, 0);
+    // Compute exact Stripe fee for the total charge
+    const grossCents = chargeObj.amount;                // total captured (base + platformFee)
+    const totalFeeCents = processingFeeCents;           // from balance transaction
 
-    // Idempotency key to avoid duplicate transfers if finalize retried
+    // Sanity guards
+    const base = Math.max(Number(baseAmountCents) || 0, 0);
+    const plat = Math.max(Number(platformFeeCents) || 0, 0);
+    const gross = Math.max(grossCents || base + plat, base + plat);
+
+    // Prorate Stripe's total fee between base and platform fee so the creator
+    // only pays the portion attributable to the base amount.
+    const feeOnBase = Math.min(Math.round(totalFeeCents * (base / (gross || 1))), totalFeeCents);
+    const feeOnPlatform = totalFeeCents - feeOnBase;
+
+    // Creator payout = base - fee_on_base (never negative)
+    const payout = Math.max(base - feeOnBase, 0);
+
+    // --- Transfer payout to creator ---
     const idemKey = `transfer:${sessionId}`;
-
-    // Transfer payout to creator (requires 'transfers' capability)
     if (payout > 0) {
       await stripe.transfers.create(
         {
@@ -200,13 +210,17 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
             courseId,
             uid,
             baseAmountCents: String(base),
-            processingFeeCents: String(fee),
-            platformFeeCents: String(platformFeeCents ?? 0),
+            platformFeeCents: String(plat),
+            grossChargeCents: String(gross),
+            totalProcessingFeeCents: String(totalFeeCents),
+            processingFeeOnBaseCents: String(feeOnBase),
+            processingFeeOnPlatformCents: String(feeOnPlatform),
           },
         },
         { idempotencyKey: idemKey }
       );
     }
+
 
     // Grant access
     await db.doc(`users/${uid}/purchases/${courseId}`).set(
@@ -222,7 +236,7 @@ export const finalizeCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true
       courseId,
       customerId: typeof session.customer === "string" ? session.customer : session.customer?.id ?? null,
       creatorPayoutCents: payout,
-      processingFeeCents: fee,
+      processingFeeCents: totalFeeCents,
       platformFeeCents,
     });
   } catch (err) {
