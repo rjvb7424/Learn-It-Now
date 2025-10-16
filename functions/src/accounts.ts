@@ -7,52 +7,61 @@ import { splitName } from "./people";
 import type Stripe from "stripe";
 import "./adminInit";
 
-// ---------- createAccount (prefill business_profile) ----------
+// ---------- createAccount (force Express, request capabilities) ----------
 export const createAccount = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res) => {
-try {
-const { uid } = parseJson<{ uid?: string }>(req);
-if (!uid) { sendBad(res, "Missing uid"); return; }
+  try {
+    const { uid } = parseJson<{ uid?: string }>(req);
+    if (!uid) { sendBad(res, "Missing uid"); return; }
 
-const { snap } = await getUserDoc(uid);
-if (!snap.exists) { sendBad(res, "User not found", 404); return; }
-const user = snap.data() as UserDoc;
+    const { snap } = await getUserDoc(uid);
+    if (!snap.exists) { sendBad(res, "User not found", 404); return; }
+    const user = snap.data() as UserDoc;
 
-const origin = normalizeOrigin((req.headers.origin as string | undefined), FALLBACK_ORIGIN);
-void origin; // kept in case you later need it for redirects/logging
+    const { first_name, last_name } = splitName(user.displayName);
+    const params: Stripe.AccountCreateParams & Stripe.AccountUpdateParams = {
+      business_type: "individual",
+      email: user.email,
+      individual: { first_name, last_name, email: user.email },
+      business_profile: {
+        url: "https://learnitnow.net",
+        product_description: "Online courses sold on Learn It Now",
+        mcc: "8299",
+      },
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+    };
 
-const { first_name, last_name } = splitName(user.displayName);
-const params: Stripe.AccountCreateParams | Stripe.AccountUpdateParams = {
-business_type: "individual",
-email: user.email,
-individual: { first_name, last_name, email: user.email },
-business_profile: {
-url: "https://learnitnow.net",
-product_description: "Online courses sold on Learn It Now",
-mcc: "8299",
-},
-capabilities: {
-card_payments: { requested: true },
-transfers: { requested: true },
-},
-};
+    const s = getStripe();
+    let accountId = user.stripeAccountId;
+    let account: Stripe.Account | null = null;
 
-const s = getStripe();
-let accountId = user.stripeAccountId;
+    if (accountId) {
+      try {
+        account = await s.accounts.retrieve(accountId);
+      } catch {
+        account = null; // stale id, we’ll recreate below
+      }
+    }
 
-if (accountId) {
-await s.accounts.update(accountId, params as Stripe.AccountUpdateParams);
-} else {
-const acct = await s.accounts.create({ type: "express", ...(params as Stripe.AccountCreateParams) });
-accountId = acct.id;
-await upsertUser(uid, { stripeAccountId: accountId, stripeOnboarded: false });
-}
+    // If there is no account OR it isn't Express, create a new Express account
+    if (!account || account.type !== "express") {
+      const acct = await s.accounts.create({ type: "express", ...(params as Stripe.AccountCreateParams) });
+      accountId = acct.id;
+      await upsertUser(uid, { stripeAccountId: accountId, stripeOnboarded: false });
+    } else {
+      // It's already Express → update details/capabilities if needed
+      await s.accounts.update(accountId!, params as Stripe.AccountUpdateParams);
+    }
 
-sendOk(res, { accountId });
-} catch (err) {
-logError("createAccount", err);
-sendBad(res, (err as any)?.message || "Unknown error", 500);
-}
+    sendOk(res, { accountId });
+  } catch (err) {
+    logError("createAccount", err);
+    sendBad(res, (err as any)?.message || "Unknown error", 500);
+  }
 });
+
 
 // ---------- createAccountLink (collect only what's due) ----------
 export const createAccountLink = onRequest({ secrets: [STRIPE_SECRET], cors: true }, async (req, res) => {
