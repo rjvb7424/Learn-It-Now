@@ -2,10 +2,10 @@
   "functions": {
     "source": "functions",
     "runtime": "nodejs20",
-    "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+    "predeploy": ["npm --prefix frontend run build"]
   },
   "hosting": {
-    "public": "dist",
+    "public": "frontend/dist",
     "ignore": ["**/.*", "**/node_modules/**"],
     "cleanUrls": true,
     "headers": [
