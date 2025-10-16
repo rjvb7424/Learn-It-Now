@@ -56,8 +56,8 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
 
     // Dashboard strings
     const chargeDescription =
-      `Course: ${course.title || "Untitled"} CourseID: ${courseId} BuyerUID: ${uid} CreatorUID: ${course.creatorUid}`;
-    const transferGroup = `course:${courseId}`;
+      `${course.title || "Untitled"} ${course.description || "Untitled"}`;
+    const transferGroup = `${courseId}`;
 
     // Create the Session ON THE CONNECTED ACCOUNT (Direct charge) with an application fee to your platform
     const session = await stripe.checkout.sessions.create(
@@ -116,13 +116,6 @@ export const createCheckout = onRequest({ secrets: [STRIPE_SECRET], cors: true }
       },
       { stripeAccount: creatorAccountId } // 👈 DIRECT charge context
     );
-
-    // Save a tiny mapping so finalize knows which connected account to read from
-    await db.doc(`checkoutSessions/${session.id}`).set({
-      courseId,
-      creatorAccountId,
-      createdAt: FieldValue.serverTimestamp(),
-    });
 
     sendOk(res, { url: session.url, id: session.id, totalAmount: baseAmount + platformFee });
   } catch (err) {
