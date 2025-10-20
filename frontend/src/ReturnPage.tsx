@@ -16,44 +16,44 @@ export function ReturnPage() {
     let cancelled = false;
 
     const run = async () => {
-      const user = auth.currentUser;
-      if (!user) { setMsg("Please sign in first."); setBusy(false); return; }
+      const u = auth.currentUser;
+      if (!u) { setMsg("Please sign in first."); setBusy(false); return; }
 
       try {
-        // Get stored accountId in case param is missing
-        const ref = doc(db, "users", user.uid);
+        const ref = doc(db, "users", u.uid);
         const snap = await getDoc(ref);
-        const data = (snap.exists() ? snap.data() : {}) as {
-          stripeAccountId?: string | null;
-        };
+        const data = (snap.exists() ? snap.data() : {}) as { stripeAccountId?: string | null; stripeOnboarded?: boolean };
         const effectiveAccountId = paramAccountId ?? data.stripeAccountId ?? undefined;
 
         if (!effectiveAccountId) {
-          // No account → nothing to do; just go home
+          // No account: make sure it's not marked true and leave.
+          await setDoc(ref, { stripeOnboarded: false }, { merge: true });
           navigate("/", { replace: true });
           return;
         }
 
-        // ✅ Ask server (Stripe) if onboarding is truly finished
+        // Ask server (Stripe) if it's truly finished
         const r = await fetch("/__/functions/accountStatus", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid: user.uid, accountId: effectiveAccountId }),
+          body: JSON.stringify({ uid: u.uid, accountId: effectiveAccountId }),
         });
         if (!r.ok) throw new Error("Status check failed");
         const s = await r.json();
 
         if (s?.onboarded) {
-          // ✅ Only now mark success and proceed to /create
+          // ✅ Only here do we mark it true and go to /create (through CreatorRoute)
           await setDoc(ref, { stripeOnboarded: true, stripeAccountId: s.accountId }, { merge: true });
           if (!cancelled) navigate("/create", { replace: true });
           return;
         }
 
-        // ❌ Not complete: DO NOT write any success flag. Just "return".
-        // Prefer going back in history if possible; otherwise go home.
+        // ❌ Not finished → explicitly keep it false and just "return"
+        await setDoc(ref, { stripeOnboarded: false, stripeAccountId: effectiveAccountId }, { merge: true });
+
+        // Prefer going back if there's history; else home
         if (window.history.length > 1) {
-          navigate(-1);            // go back to where the user came from
+          navigate(-1);
         } else {
           navigate("/", { replace: true });
         }
@@ -66,17 +66,14 @@ export function ReturnPage() {
 
     const unsub = onAuthStateChanged(auth, () => run());
     run();
+
     return () => { cancelled = true; unsub(); };
   }, [paramAccountId, navigate]);
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>{msg}</Typography>
-      {busy ? (
-        <CircularProgress />
-      ) : (
-        <Button onClick={() => navigate("/", { replace: true })}>Back home</Button>
-      )}
+      {busy ? <CircularProgress /> : <Button onClick={() => navigate("/", { replace: true })}>Back home</Button>}
     </Box>
   );
 }

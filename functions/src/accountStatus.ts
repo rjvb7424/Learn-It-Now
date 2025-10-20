@@ -16,17 +16,24 @@ export const accountStatus = onRequest({ secrets: [STRIPE_SECRET], cors: true },
     }
     if (!accountId) { sendBad(res, "No Stripe account found"); return; }
 
-    const acct = await getStripe().accounts.retrieve(accountId);
+    const stripe = getStripe();
+    const acct = await stripe.accounts.retrieve(accountId);
 
-    // Strict completion condition (recommended):
+    const currentlyDue = acct.requirements?.currently_due ?? [];
+    const futureCurrentlyDue = (acct as any).future_requirements?.currently_due ?? [];
+    const disabledReason = acct.requirements?.disabled_reason ?? null;
+
     const onboarded =
       !!(acct as any).details_submitted &&
-      (acct.requirements?.currently_due?.length ?? 0) === 0 &&
+      currentlyDue.length === 0 &&
+      futureCurrentlyDue.length === 0 &&
       !!acct.charges_enabled &&
-      !!acct.payouts_enabled;
+      !!acct.payouts_enabled &&
+      !disabledReason;
 
     sendOk(res, { accountId: acct.id, onboarded });
-    } catch (e: any) {
-    sendBad(res, e?.message ?? "Unknown error", 500);
-    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : typeof e === "string" ? e : "Unknown error";
+    sendBad(res, msg, 500);
+  }
 });
