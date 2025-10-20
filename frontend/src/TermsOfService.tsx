@@ -1,17 +1,21 @@
-// src/pages/TermsOfService.tsx
+// external imports
 import { Container, Typography, List, ListItem, ListItemText, Divider, Box } from "@mui/material";
+
+// internal imports
 import CustomAppBar from "./components/customappbar/CustomAppBar";
 import PageHeader from "./components/PageHeader";
 
+// Terms of Service page that outlines user responsibilities and platform rules
 export default function TermsOfService() {
   return (
     <Box>
-        <CustomAppBar showSearch={false} />
+      <CustomAppBar showSearch={false} />
       <Container>
         <PageHeader
           title="Terms of Service"
           subtitle="By using this service, you agree to the following terms:"
         />
+        
         <Typography variant="body2" color="text.secondary" gutterBottom>
           Last updated: 5th of October 2025
         </Typography>
