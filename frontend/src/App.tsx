@@ -1,42 +1,20 @@
-// src/App.tsx
+// external imports
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import theme from "./theme";
 
+// internal imports
 import HomePage from "./homepage/HomePage";
 import CreatePage from "./createpage/CreatePage";
 import CoursePage from "./coursepage/CoursePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CreatorRoute from "./CreatorRoute";
 import { ReturnPage } from "./ReturnPage";
+import { RefreshPage } from "./RefreshPage"
 import AcquiredCoursesPage from "./PurchasesPage";
 import MyCoursesPage from "./CreatedCoursesPage";
 import CheckoutSuccess from "./CheckoutSuccess";
 import TermsOfService from "./TermsOfService";
-import { useParams } from "react-router-dom";
-import { useEffect } from "react";
-
-export function RefreshPage() {
-  const { accountId } = useParams<{ accountId: string }>();
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch("/__/functions/createAccountLink", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accountId }),
-        });
-        const j = await r.json();
-        if (j?.url) window.location.replace(j.url);
-      } catch (e) {
-        console.error(e);
-      }
-    })();
-  }, [accountId]);
-
-  return <div>Onboarding expired, retrying…</div>;
-}
 
 export default function App() {
   return (
