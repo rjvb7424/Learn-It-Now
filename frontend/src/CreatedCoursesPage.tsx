@@ -23,7 +23,7 @@ import {
   computeCourseStats,
   type Lesson,
   type CourseStats,
-} from "./homepage/courseStats";
+} from "./homepage/components/courseStats";
 
 export default function MyCoursesPage() {
   const [uid, setUid] = useState<string | null>(null);

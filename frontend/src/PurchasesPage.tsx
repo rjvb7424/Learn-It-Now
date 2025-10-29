@@ -13,7 +13,7 @@ import type { FirestoreCourse, UserDoc } from "./components/courseMapping";
 import PageHeader from "./components/PageHeader";
 import LoadingOverlay from "./LoadingOverlay";
 
-import { computeCourseStats, type Lesson, type CourseStats } from "./homepage/courseStats";
+import { computeCourseStats, type Lesson, type CourseStats } from "./homepage/components/courseStats";
 
 export default function AcquiredCoursesPage() {
   const [uid, setUid] = useState<string | null>(null);

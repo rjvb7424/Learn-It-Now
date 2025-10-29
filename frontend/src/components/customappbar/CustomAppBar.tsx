@@ -8,7 +8,7 @@ import { SignIn } from "../../firebase/SignIn";
 import StripeSetupDialog from "./components/StripeSetupDialog";
 import CreateButton from "./components/CreateButton";
 import ProfileMenu from "./components/ProfileMenu";
-import SearchBar from "../../homepage/SearchBar";
+import SearchBar from "../../homepage/components/SearchBar";
 
 type CustomAppBarProps = { showSearch?: boolean };
 
