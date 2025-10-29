@@ -16,21 +16,20 @@ import { useCourseCheckout } from "../hooks/useCourseCheckout";
 import LoadingOverlay from "../LoadingOverlay";
 
 type Lesson = { title: string; content: string };
-type Stats = { lessons: number; words: number; minutes: number };
+type Duration = { lessons: number; words: number; minutes: number };
 
-const WORDS_PER_MINUTE = 200;
 const countWords = (t: string) =>
   t?.trim().match(/[A-Za-zÀ-ÖØ-öø-ÿ0-9’']+/g)?.length ?? 0;
 
-const computeStats = (lessons: Lesson[]): Stats => {
-  const words = lessons.reduce(
-    (s, l) => s + countWords(l.title) + countWords(l.content),
-    0
-  );
+// compute a course's duration from its lessons
+const computeDuration = (lessons: Lesson[]): Duration => {
+  const WORDS_PER_MINUTE = 200;
+  const words = lessons.reduce((s, l) => s + countWords(l.title) + countWords(l.content), 0);
   const minutes = Math.max(1, Math.ceil(words / WORDS_PER_MINUTE));
   return { lessons: lessons.length, words, minutes };
 };
 
+// Home Page component that displays all available courses with search functionality.
 export default function HomePage() {
   const [allItems, setAllItems] = useState<ReturnType<typeof courseToCard>[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +80,7 @@ export default function HomePage() {
 
         const uids = new Set<string>();
         const raw = snap.docs.map((d) => {
-          const data = d.data() as FirestoreCourse & { lessons?: Lesson[]; stats?: Stats };
+          const data = d.data() as FirestoreCourse & { lessons?: Lesson[]; stats?: Duration };
           if (data.creatorUid) uids.add(data.creatorUid);
           return { id: d.id, data };
         });
@@ -111,12 +110,12 @@ export default function HomePage() {
           const avatar = prof?.photoURL;
 
           const lessonsArr = Array.isArray(data.lessons) ? data.lessons : [];
-          const stats: Stats | undefined =
-            data.stats ?? (lessonsArr.length ? computeStats(lessonsArr) : undefined);
+          const duration: Duration | undefined =
+            data.stats ?? (lessonsArr.length ? computeDuration(lessonsArr) : undefined);
 
           return {
             ...courseToCard(id, data, name, avatar, purchasedIds.has(id)),
-            stats, // will flow to <CourseCard stats={...} />
+            duration, // will flow to <CourseCard duration={...} />
           };
         });
 
