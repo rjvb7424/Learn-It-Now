@@ -158,8 +158,7 @@ export default function HomePage() {
           items={items}
           loading={false}
           emptyText={q ? "No courses match your search." : "No courses yet."}
-          onAcquire={({ courseId }) => startCheckout(courseId)}
-        />
+          onAcquire={({ courseId }) => startCheckout(courseId)}/>
       )}
 
       <LoadingOverlay open={loading} />

@@ -67,14 +67,7 @@ export default function CourseGrid({ items, emptyText = "No courses yet.", showS
 
   return (
     <Box
-      sx={{
-        px: 3,
-        py: 3,
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
-        gap: 3,
-      }}
-    >
+      sx={{ px: 3, py: 3, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: 3, }}>
       {shuffled.map((c) => (
         <CourseCard
           key={c.courseId}
