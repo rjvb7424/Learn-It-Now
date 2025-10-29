@@ -9,7 +9,7 @@ import { auth, db } from "../../firebase/firebase";
 import { SignIn } from "../../firebase/SignIn";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { MenuBook, AccessTime, Article } from "@mui/icons-material";
-import type { CourseStats } from "./courseStats";
+import type { CourseStats } from "../../homepage/components/courseStats";
 
 const clamp = (lines = 2) => ({
   display: "-webkit-box",

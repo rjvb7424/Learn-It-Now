@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useMemo, useRef } from "react";
 
 // internal imports
-import CourseCard from "../../homepage/components/CourseCard";
+import CourseCard from "./CourseCard";
 import type { CourseCardData } from "./CourseCardData";
 
 type Props = {
@@ -17,14 +17,8 @@ type Props = {
   onAcquire?: (args: { courseId: string; title: string; price: number }) => void;
 };
 
-export default function CourseGrid({
-  items,
-  emptyText = "No courses yet.",
-  showSignInPrompt = false,
-  onSignInClick,
-  onOpenCourse,
-  onAcquire,
-}: Props) {
+// CourseGrid component to display a grid of course cards.
+export default function CourseGrid({ items, emptyText = "No courses yet.", showSignInPrompt = false, onSignInClick, onOpenCourse, onAcquire, }: Props) {
   const navigate = useNavigate();
 
   // --- Seeded RNG so order is stable for the session (changes on full reload) ---
@@ -39,7 +33,7 @@ export default function CourseGrid({
       return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
     };
   }, []);
-
+  
   const shuffled = useMemo(() => {
     // Fisher–Yates using the seeded RNG
     const arr = [...items];
