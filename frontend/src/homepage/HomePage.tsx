@@ -1,11 +1,11 @@
-// src/homepage/HomePage.tsx
+// external imports
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Box } from "@mui/material";
-import {
-  collection, onSnapshot, orderBy, query, where, documentId, getDocs,
-} from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query, where, documentId, getDocs, } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useLocation } from "react-router-dom";
+
+// internal imports
 import CustomAppBar from "../components/customappbar/CustomAppBar";
 import CourseGrid from "../components/CourseGrid";
 import { db, auth } from "../firebase/firebase";
