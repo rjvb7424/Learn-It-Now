@@ -9,6 +9,19 @@ function isValidHttpUrl(s: unknown): s is string {
   return typeof s === "string" && /^https?:\/\//i.test(s);
 }
 
+/**
+ * IMPORTANT: replace these with the exact URLs shown in your Firebase console.
+ * Example names based on your screenshot. Keep region segment intact.
+ */
+const FN = {
+  accountStatus:
+    import.meta.env.VITE_ACCOUNT_STATUS_URL ||
+    "https://accountstatus-5rf4ii6yvq-uc.a.run.app",
+  createAccountLink:
+    import.meta.env.VITE_CREATE_ACCOUNT_LINK_URL ||
+    "https://createaccountlink-5rf4ii6yvq-uc.a.run.app",
+};
+
 export function ReturnPage() {
   const { accountId: paramAccountId } = useParams<{ accountId: string }>();
   const navigate = useNavigate();
@@ -16,38 +29,37 @@ export function ReturnPage() {
   const [busy, setBusy] = useState(true);
   const [msg, setMsg] = useState("Checking onboarding status…");
   const [effectiveAccountId, setEffectiveAccountId] = useState<string | null>(null);
-  const [canResume, setCanResume] = useState(false); // show Resume button when not complete
-  const [retrying, setRetrying] = useState(false);   // spinner for buttons
+  const [canResume, setCanResume] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
-  // ---- helpers
   const goCreate = useCallback(() => navigate("/create", { replace: true }), [navigate]);
   const goHome   = useCallback(() => navigate("/",       { replace: true }), [navigate]);
 
-  const fetchJson = useMemo(
+  const postJson = useMemo(
     () =>
       async (url: string, body: unknown) => {
         const r = await fetch(url, {
           method: "POST",
+          mode: "cors",
+          credentials: "omit",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body ?? {}),
         });
+        const raw = await r.text(); // read once
         if (!r.ok) {
-          const t = await r.text().catch(() => "");
-          console.error(url, "HTTP", r.status, t);
+          console.error(url, "HTTP", r.status, raw);
           throw new Error(`HTTP ${r.status}`);
         }
         try {
-          return await r.json();
+          return JSON.parse(raw);
         } catch {
-          const t = await r.text().catch(() => "");
-          console.error(url, "non-JSON:", t);
+          console.error(url, "non-JSON:", raw);
           throw new Error("Non-JSON response");
         }
       },
     []
   );
 
-  // ---- initial check
   useEffect(() => {
     let cancel = false;
 
@@ -77,8 +89,8 @@ export function ReturnPage() {
           return;
         }
 
-        // Ask server if completed
-        const status = await fetchJson("/__/functions/accountStatus", {
+        // Server truth: has onboarding actually finished?
+        const status = await postJson(FN.accountStatus, {
           uid: u.uid,
           accountId: acctId,
         });
@@ -86,13 +98,12 @@ export function ReturnPage() {
         if (cancel) return;
 
         if (status?.onboarded === true) {
-          // success path: mark true and go create
           await setDoc(ref, { stripeOnboarded: true, stripeAccountId: status.accountId }, { merge: true });
           goCreate();
           return;
         }
 
-        // not complete: keep false + show resume button
+        // Not complete: keep false and show Resume button
         await setDoc(ref, { stripeOnboarded: false, stripeAccountId: acctId }, { merge: true });
         setMsg("You still have steps to finish. Resume onboarding to complete setup.");
         setCanResume(true);
@@ -107,29 +118,24 @@ export function ReturnPage() {
     const unsub = onAuthStateChanged(auth, () => run());
     run();
 
-    return () => {
-      cancel = true;
-      unsub();
-    };
-  }, [paramAccountId, fetchJson, navigate, goCreate]);
+    return () => { cancel = true; unsub(); };
+  }, [paramAccountId, postJson, goCreate]);
 
-  // ---- handlers
   const handleResume = async () => {
     if (!effectiveAccountId) return;
     try {
       setRetrying(true);
       setMsg("Creating a new Stripe onboarding session…");
-      const link = await fetchJson("/__/functions/createAccountLink", { accountId: effectiveAccountId });
 
+      const link = await postJson(FN.createAccountLink, { accountId: effectiveAccountId });
       const url = link?.url;
+
       if (!isValidHttpUrl(url)) {
         console.error("createAccountLink returned invalid url:", url);
         setMsg("Could not open Stripe (invalid link). Please try again from your dashboard.");
         setRetrying(false);
         return;
       }
-
-      // Use replace to keep history clean
       window.location.replace(url);
     } catch (e) {
       console.error("Resume onboarding failed:", e);
@@ -138,15 +144,13 @@ export function ReturnPage() {
     }
   };
 
-  const handleRetryCheck = async () => {
-    // force rerun the effect by navigating to the same route with replace
-    navigate(0); // reload current route
+  const handleRetryCheck = () => {
+    navigate(0); // reload route to re-run effect
   };
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>{msg}</Typography>
-
       {busy ? (
         <CircularProgress />
       ) : (
@@ -156,9 +160,7 @@ export function ReturnPage() {
               {retrying ? "Opening Stripe…" : "Resume onboarding"}
             </Button>
           )}
-          {!canResume && (
-            <Button onClick={handleRetryCheck}>Retry</Button>
-          )}
+          {!canResume && <Button onClick={handleRetryCheck}>Retry</Button>}
           <Button onClick={goHome} variant="text">Back home</Button>
         </Stack>
       )}
