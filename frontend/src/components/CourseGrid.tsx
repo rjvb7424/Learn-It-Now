@@ -1,8 +1,8 @@
 // src/components/CourseGrid.tsx
 import { Box, Typography, Button } from "@mui/material";
-import CourseCard from "../homepage/CourseCard";
+import CourseCard from "../homepage/components/CourseCard";
 import { useNavigate } from "react-router-dom";
-import type { CourseStats } from "../homepage/courseStats.ts";
+import type { CourseStats } from "../homepage/components/courseStats";
 
 export type CourseCardData = {
   courseId: string;

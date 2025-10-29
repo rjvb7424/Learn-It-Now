@@ -5,8 +5,8 @@ import {
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
-import { auth, db } from "../firebase/firebase";
-import { SignIn } from "../firebase/SignIn";
+import { auth, db } from "../../firebase/firebase";
+import { SignIn } from "../../firebase/SignIn";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { MenuBook, AccessTime, Article } from "@mui/icons-material";
 import type { CourseStats } from "./courseStats";
