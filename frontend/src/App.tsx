@@ -14,7 +14,7 @@ import { RefreshPage } from "./RefreshPage"
 import AcquiredCoursesPage from "./PurchasesPage";
 import MyCoursesPage from "./CreatedCoursesPage";
 import CheckoutSuccess from "./CheckoutSuccess";
-import TermsOfService from "./TermsOfService";
+import TermsOfService from "./tospage/TermsOfService";
 
 export default function App() {
   return (

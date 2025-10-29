@@ -2,8 +2,8 @@
 import { Container, Typography, List, ListItem, ListItemText, Divider, Box } from "@mui/material";
 
 // internal imports
-import CustomAppBar from "./components/customappbar/CustomAppBar";
-import PageHeader from "./components/PageHeader";
+import CustomAppBar from "../components/customappbar/CustomAppBar";
+import PageHeader from "../components/PageHeader";
 
 // Terms of Service page that outlines user responsibilities and platform rules
 export default function TermsOfService() {

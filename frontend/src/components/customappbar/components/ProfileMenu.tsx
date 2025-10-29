@@ -12,8 +12,8 @@ import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
-import { auth } from "../../firebase/firebase";
-import { useAuthProfile } from "../../hooks/useAuthProfile";
+import { auth } from "../../../firebase/firebase";
+import { useAuthProfile } from "../../../hooks/useAuthProfile";
 
 type Props = {
   photoURL?: string | null;

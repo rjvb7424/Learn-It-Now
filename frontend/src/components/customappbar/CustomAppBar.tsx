@@ -5,9 +5,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthProfile } from "../../hooks/useAuthProfile";
 import { useStripeOnboarding } from "../../hooks/useStripeOnboarding";
 import { SignIn } from "../../firebase/SignIn";
-import StripeSetupDialog from "./StripeSetupDialog";
-import CreateButton from "./CreateButton";
-import ProfileMenu from "./ProfileMenu";
+import StripeSetupDialog from "./components/StripeSetupDialog";
+import CreateButton from "./components/CreateButton";
+import ProfileMenu from "./components/ProfileMenu";
 import SearchBar from "../../homepage/SearchBar";
 
 type CustomAppBarProps = { showSearch?: boolean };
