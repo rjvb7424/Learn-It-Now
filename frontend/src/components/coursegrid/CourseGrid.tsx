@@ -1,22 +1,11 @@
-// src/components/CourseGrid.tsx
+// external imports
 import { Box, Typography, Button } from "@mui/material";
-import CourseCard from "../homepage/components/CourseCard";
 import { useNavigate } from "react-router-dom";
 import { useMemo, useRef } from "react";
-import type { CourseStats } from "../homepage/components/courseStats";
 
-export type CourseCardData = {
-  courseId: string;
-  title: string;
-  description: string;
-  price: number;       // 0 if free
-  purchased?: boolean; // optional
-  author: string;
-  authorInitials: string;
-  avatarUrl?: string;
-  date: string;        // preformatted (e.g., "Oct 3, 2025")
-  stats?: CourseStats;
-};
+// internal imports
+import CourseCard from "../../homepage/components/CourseCard";
+import type { CourseCardData } from "./CourseCardData";
 
 type Props = {
   items: CourseCardData[];

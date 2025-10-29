@@ -6,7 +6,8 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 
 import CustomAppBar from "./components/customappbar/CustomAppBar";
-import CourseGrid, { type CourseCardData } from "./components/CourseGrid";
+import CourseGrid from "./components/coursegrid/CourseGrid";
+import type { CourseCardData } from "./components/coursegrid/CourseCardData";
 import { db, auth } from "./firebase/firebase";
 import { courseToCard } from "./components/courseMapping";
 import type { FirestoreCourse, UserDoc } from "./components/courseMapping";

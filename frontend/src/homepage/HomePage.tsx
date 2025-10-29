@@ -7,7 +7,7 @@ import { useLocation } from "react-router-dom";
 
 // internal imports
 import CustomAppBar from "../components/customappbar/CustomAppBar";
-import CourseGrid from "../components/CourseGrid";
+import CourseGrid from "../components/coursegrid/CourseGrid";
 import { db, auth } from "../firebase/firebase";
 import { courseToCard } from "../components/courseMapping";
 import type { FirestoreCourse, UserDoc } from "../components/courseMapping";

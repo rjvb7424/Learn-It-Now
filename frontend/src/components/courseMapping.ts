@@ -1,6 +1,6 @@
 // src/utils/courseMapping.ts
 import { Timestamp } from "firebase/firestore";
-import type { CourseCardData } from "../components/CourseGrid";
+import type { CourseCardData } from "./coursegrid/CourseGrid";
 
 export type FirestoreCourse = {
   title?: string;
