@@ -8,7 +8,6 @@ import HomePage from "./homepage/HomePage";
 import CreatePage from "./createpage/CreatePage";
 import CoursePage from "./coursepage/CoursePage";
 import ProtectedRoute from "./components/ProtectedRoute";
-import CreatorRoute from "./CreatorRoute";
 import { ReturnPage } from "./ReturnPage";
 import { RefreshPage } from "./RefreshPage"
 import AcquiredCoursesPage from "./PurchasesPage";
@@ -33,9 +32,7 @@ export default function App() {
           {/* Auth-only */}
           <Route path="/purchases" element={<ProtectedRoute><AcquiredCoursesPage /></ProtectedRoute>} />
           <Route path="/my-courses" element={<ProtectedRoute><MyCoursesPage /></ProtectedRoute>} />
-
-          {/* Creator-only */}
-          <Route path="/create" element={<CreatorRoute><CreatePage /></CreatorRoute>} />
+          <Route path="/create" element={<ProtectedRoute><CreatePage /></ProtectedRoute>} />
 
           {/* Course viewing */}
           <Route path="/course/:courseId" element={<ProtectedRoute><CoursePage /></ProtectedRoute>} />
