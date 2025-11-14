@@ -1,4 +1,4 @@
-// src/components/PricingPublishSection.tsx
+// src/createpage/components/PricingPublishSection.tsx
 import {
   Alert,
   Box,
@@ -25,9 +25,15 @@ type Props = {
   canPublish: boolean;
   onPublish: VoidFunction;
   onReset: VoidFunction;
+
+  // NEW: can this user publish paid courses?
+  canPublishPaid: boolean;
+
+  // NEW: called when user tries to make the course paid but isn’t onboarded
+  onRequireStripe: () => void;
 };
 
-const MIN_PRICE_EUR = 1;           
+const MIN_PRICE_EUR = 1;
 const PLATFORM_FEE_RATE = 0.3;
 
 const toNumberSafe = (v: string) => {
@@ -45,10 +51,12 @@ export default function PricingPublishSection({
   canPublish,
   onPublish,
   onReset,
+  canPublishPaid,
+  onRequireStripe,
 }: Props) {
   // Ensure defaults:
   // - Free courses keep price at 0.00
-  // - When switching to paid, prefill to €2.00 if below the minimum
+  // - When switching to paid, prefill to €1.00 if below the minimum
   useEffect(() => {
     if (isFree) {
       if (price !== "0.00") setPrice("0.00");
@@ -90,29 +98,39 @@ export default function PricingPublishSection({
           Pricing &amp; Publish
         </Typography>
 
-      {!isFree && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Buyers pay the course price plus a <b>30% platform fee</b>.{" "}
-          <b>A separate payment processing fee will also be deducted from the
-          creator’s payout</b> (card/network fees taken by Stripe).{" "}
-          Estimated buyer total: €{total.toFixed(2)} (course €{priceNum.toFixed(2)} + platform fee €{fee.toFixed(2)}).
-        </Typography>
-      )}
+        {!isFree && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Buyers pay the course price plus a <b>30% platform fee</b>.{" "}
+            <b>A separate payment processing fee will also be deducted from the
+            creator’s payout</b> (card/network fees taken by Stripe).{" "}
+            Estimated buyer total: €{total.toFixed(2)} (course €
+            {priceNum.toFixed(2)} + platform fee €{fee.toFixed(2)}).
+          </Typography>
+        )}
 
         <Stack spacing={2}>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={isFree}
-              onChange={(e) => {
-                const checked = e.target.checked;
-                setIsFree(checked);
-                setPrice(checked ? "0.00" : MIN_PRICE_EUR.toFixed(2)); // now 1.00
-              }}
-            />
-          }
-          label="Course is free"
-        />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isFree}
+                onChange={(e) => {
+                  const checked = e.target.checked; // true => free, false => paid
+
+                  // User is trying to make the course PAID
+                  if (!checked && !canPublishPaid) {
+                    // Open Stripe dialog and DO NOT toggle yet
+                    onRequireStripe();
+                    return;
+                  }
+
+                  // Allowed toggle (either to free, or to paid with Stripe ready)
+                  setIsFree(checked);
+                  setPrice(checked ? "0.00" : MIN_PRICE_EUR.toFixed(2));
+                }}
+              />
+            }
+            label="Course is free"
+          />
 
           {!isFree && (
             <TextField
@@ -126,14 +144,22 @@ export default function PricingPublishSection({
                 if (num > 0 && num < MIN_PRICE_EUR) num = MIN_PRICE_EUR;
                 setPrice(num.toFixed(2));
               }}
-              // Use text + inputMode so typing feels natural across browsers
               type="text"
               inputMode="decimal"
-              inputProps={{ min: MIN_PRICE_EUR, max: LIMITS.maxPrice, step: 0.01 }}
+              inputProps={{
+                min: MIN_PRICE_EUR,
+                max: LIMITS.maxPrice,
+                step: 0.01,
+              }}
               helperText={
                 tooLow
                   ? `Minimum price is €${MIN_PRICE_EUR.toFixed(2)}.`
-                  : `Enter a price between €${MIN_PRICE_EUR.toFixed(2)} and €${(LIMITS.maxPrice as number).toFixed?.(2) ?? LIMITS.maxPrice}.`
+                  : `Enter a price between €${MIN_PRICE_EUR.toFixed(
+                      2
+                    )} and €${
+                      (LIMITS.maxPrice as number).toFixed?.(2) ??
+                      LIMITS.maxPrice
+                    }.`
               }
               error={tooLow}
             />

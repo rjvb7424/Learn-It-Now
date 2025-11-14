@@ -184,7 +184,10 @@ export default function CreatePage() {
           canPublish={canPublish && !publishing}
           onPublish={onPublish}
           onReset={onReset}
+          canPublishPaid={canPublishPaid}
+          onRequireStripe={() => setStripeDlgOpen(true)}
         />
+
       </Container>
 
       {/* NEW: Stripe setup dialog for paid publishing */}
