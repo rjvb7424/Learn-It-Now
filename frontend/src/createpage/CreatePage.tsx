@@ -16,6 +16,11 @@ import PageHeader from "../components/PageHeader";
 import { useNavigate } from "react-router-dom";
 import LoadingOverlay from "../LoadingOverlay"; // ⬅️ use reusable loader
 
+// NEW imports
+import { useAuthProfile } from "../hooks/useAuthProfile";
+import { useStripeOnboarding } from "../hooks/useStripeOnboarding";
+import StripeSetupDialog from "../components/customappbar/components/StripeSetupDialog";
+
 export default function CreatePage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -24,7 +29,22 @@ export default function CreatePage() {
   const [price, setPrice] = useState("0");
   const [publishing, setPublishing] = useState(false);
 
+  // NEW: Stripe dialog state
+  const [stripeDlgOpen, setStripeDlgOpen] = useState(false);
+
   const navigate = useNavigate();
+
+  // NEW: auth profile / Stripe info
+  const { firebaseUser, stripeAccountId, stripeOnboarded, canPublishPaid } = useAuthProfile();
+
+  // NEW: Stripe onboarding hooks
+  const {
+    busy: stripeBusy,
+    error: stripeError,
+    setError: setStripeError,
+    createAccountAndGo,
+    continueOnboarding,
+  } = useStripeOnboarding({ uid: firebaseUser?.uid });
 
   const addLesson = () => setLessons((ls) => [...ls, { title: "", content: "" }]);
 
@@ -41,9 +61,11 @@ export default function CreatePage() {
     if (!title.trim()) errs.title = "Title is required.";
     if (!description.trim()) errs.description = "Description is required.";
     if (lessons.length === 0) errs.lessons = "Add at least one lesson.";
-    if (lessons.some((l) => !l.title.trim() || !l.content.trim())) errs.lessonFields = "Fill all lesson fields.";
+    if (lessons.some((l) => !l.title.trim() || !l.content.trim()))
+      errs.lessonFields = "Fill all lesson fields.";
     if (!isFree) {
-      if (price === "" || Number(price) < 0.01) errs.price = `Enter a valid price between 1.00 and ${LIMITS.maxPrice}€`;
+      if (price === "" || Number(price) < 0.01)
+        errs.price = `Enter a valid price between 1.00 and ${LIMITS.maxPrice}€`;
     }
     return errs;
   }, [title, description, lessons, price, isFree]);
@@ -66,6 +88,12 @@ export default function CreatePage() {
     const user = auth.currentUser;
     if (!user) {
       alert("Please sign in to publish a course.");
+      return;
+    }
+
+    // 🔐 NEW: Require Stripe only for paid courses
+    if (!isFree && !canPublishPaid) {
+      setStripeDlgOpen(true);
       return;
     }
 
@@ -101,7 +129,7 @@ export default function CreatePage() {
         { merge: true }
       );
 
-      // 3) Reset and navigate (keep your target; or navigate to the new course)
+      // 3) Reset and navigate
       onReset();
       navigate("/", { replace: true });
       // or: navigate(`/course/${courseRef.id}`);
@@ -125,7 +153,10 @@ export default function CreatePage() {
     <Box>
       <CustomAppBar showSearch={false} />
       <Container>
-        <PageHeader title="Create a New Course Page" subtitle="Fill in the details below to create your very own course!" />
+        <PageHeader
+          title="Create a New Course Page"
+          subtitle="Fill in the details below to create your very own course!"
+        />
 
         <PolicyNotice />
 
@@ -156,7 +187,20 @@ export default function CreatePage() {
         />
       </Container>
 
-      {/* Reusable full-screen loading while publishing */}
+      {/* NEW: Stripe setup dialog for paid publishing */}
+      <StripeSetupDialog
+        open={stripeDlgOpen}
+        loading={stripeBusy}
+        error={stripeError}
+        stripeAccountId={stripeAccountId}
+        stripeOnboarded={stripeOnboarded}
+        onClose={() => setStripeDlgOpen(false)}
+        onCreateAccount={createAccountAndGo}
+        onContinueOnboarding={() => continueOnboarding(stripeAccountId)}
+        clearError={() => setStripeError(null)}
+      />
+
+      {/* Full-screen loading while publishing */}
       <LoadingOverlay open={publishing} />
     </Box>
   );
