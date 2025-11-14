@@ -1,6 +1,9 @@
+// external imports
 import { Button } from "@mui/material";
-import { SignIn } from "../../../firebase/SignIn";
 import { useNavigate } from "react-router-dom";
+
+// internal imports
+import { SignIn } from "../../../firebase/SignIn";
 
 type Props = {
   isSignedIn: boolean;
