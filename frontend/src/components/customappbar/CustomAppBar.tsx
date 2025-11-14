@@ -3,9 +3,7 @@ import { useState } from "react";
 import { AppBar, Toolbar, Button, Box, Typography } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthProfile } from "../../hooks/useAuthProfile";
-import { useStripeOnboarding } from "../../hooks/useStripeOnboarding";
 import { SignIn } from "../../firebase/SignIn";
-import StripeSetupDialog from "./components/StripeSetupDialog";
 import CreateButton from "./components/CreateButton";
 import ProfileMenu from "./components/ProfileMenu";
 import SearchBar from "../../homepage/components/SearchBar";
@@ -15,16 +13,11 @@ type CustomAppBarProps = { showSearch?: boolean };
 export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
   const navigate = useNavigate();
   const [loadingSignIn, setLoadingSignIn] = useState(false);
-  const [dlgOpen, setDlgOpen] = useState(false);
 
   const location = useLocation();
   const currentQ = new URLSearchParams(location.search).get("q") ?? "";
 
-  const { firebaseUser, stripeAccountId, stripeOnboarded, canPublishPaid } = useAuthProfile();
-  const { busy, error, setError, createAccountAndGo, continueOnboarding } =
-    useStripeOnboarding({ uid: firebaseUser?.uid });
-
-  const openStripeDialog = () => setDlgOpen(true);
+  const { firebaseUser } = useAuthProfile();
 
   return (
     <Box>
@@ -53,10 +46,24 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
           }}
         >
           {/* Left: logo */}
-          <Box sx={{ flex: "0 0 auto", minWidth: 0, display: "flex", alignItems: "center", order: 1 }}>
-            <Button disableRipple onClick={() => navigate("/")} sx={{ textTransform: "none", color: "inherit" }}>
-              {/* Use inherit so it follows theme (white in dark mode) */}
-              <Typography noWrap sx={{ fontWeight: "bold", color: "inherit", fontSize: "1.45rem" }}>
+          <Box
+            sx={{
+              flex: "0 0 auto",
+              minWidth: 0,
+              display: "flex",
+              alignItems: "center",
+              order: 1,
+            }}
+          >
+            <Button
+              disableRipple
+              onClick={() => navigate("/")}
+              sx={{ textTransform: "none", color: "inherit" }}
+            >
+              <Typography
+                noWrap
+                sx={{ fontWeight: "bold", color: "inherit", fontSize: "1.45rem" }}
+              >
                 Learn It Now
               </Typography>
             </Button>
@@ -64,19 +71,31 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
 
           {/* Middle: search (optional) */}
           {showSearch ? (
-            <Box sx={{ order: 2, flex: "1 1 auto", minWidth: 0, display: "flex", justifyContent: "center" }}>
+            <Box
+              sx={{
+                order: 2,
+                flex: "1 1 auto",
+                minWidth: 0,
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
               <SearchBar
                 initialValue={currentQ}
-                onSearch={(q) => navigate(q ? `/?q=${encodeURIComponent(q)}` : "/")}
+                onSearch={(q) =>
+                  navigate(q ? `/?q=${encodeURIComponent(q)}` : "/")
+                }
               />
             </Box>
           ) : (
-            <Box aria-hidden role="presentation" sx={{ order: 2, flex: "1 1 auto", minWidth: 0 }} />
+            <Box
+              aria-hidden
+              role="presentation"
+              sx={{ order: 2, flex: "1 1 auto", minWidth: 0 }}
+            />
           )}
 
-          {/* Right: actions */}
-          {/* Right: actions (stable width to prevent search bar jump) */}
-          {/* Right: actions — perfectly stable width */}
+          {/* Right: actions — stable width */}
           <Box
             sx={{
               order: 3,
@@ -102,14 +121,14 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
               aria-hidden={!firebaseUser}
             >
               <CreateButton
-                // Render the REAL thing so sizing is identical
-                isSignedIn
-                canPublishPaid={canPublishPaid}
-                openStripeDialog={openStripeDialog}
+                isSignedIn={!!firebaseUser}
                 loadingSignIn={loadingSignIn}
                 setLoadingSignIn={setLoadingSignIn}
               />
-              <ProfileMenu photoURL={firebaseUser?.photoURL} displayName={firebaseUser?.displayName} />
+              <ProfileMenu
+                photoURL={firebaseUser?.photoURL}
+                displayName={firebaseUser?.displayName}
+              />
             </Box>
 
             {/* Overlay only when signed out */}
@@ -126,30 +145,25 @@ export default function CustomAppBar({ showSearch = true }: CustomAppBarProps) {
                   variant="outlined"
                   color="primary"
                   onClick={async () => {
-                    await SignIn();
+                    if (loadingSignIn) return;
+                    setLoadingSignIn(true);
+                    try {
+                      await SignIn();
+                    } finally {
+                      setLoadingSignIn(false);
+                    }
                   }}
                   aria-label="Sign in"
                   sx={{ width: "100%" }}
+                  disabled={loadingSignIn}
                 >
-                  Sign in
+                  {loadingSignIn ? "Signing in..." : "Sign in"}
                 </Button>
               </Box>
             )}
           </Box>
         </Toolbar>
       </AppBar>
-
-      <StripeSetupDialog
-        open={dlgOpen}
-        loading={busy}
-        error={error}
-        stripeAccountId={stripeAccountId}
-        stripeOnboarded={stripeOnboarded}
-        onClose={() => setDlgOpen(false)}
-        onCreateAccount={createAccountAndGo}
-        onContinueOnboarding={() => continueOnboarding(stripeAccountId)}
-        clearError={() => setError(null)}
-      />
     </Box>
   );
 }
