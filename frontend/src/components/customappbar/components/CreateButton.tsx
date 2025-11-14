@@ -7,23 +7,23 @@ import { SignIn } from "../../../firebase/SignIn";
 
 type CreateButtonProps = {
   isSignedIn: boolean;
-  canPublishPaid: boolean;
-  openStripeDialog: () => void;
   loadingSignIn: boolean;
   setLoadingSignIn: (loading: boolean) => void;
+
+  // Deprecated props (kept for compatibility, no longer used)
+  canPublishPaid?: boolean;
+  openStripeDialog?: () => void;
 };
 
 export default function CreateButton({
   isSignedIn,
-  canPublishPaid,
-  openStripeDialog,
   loadingSignIn,
   setLoadingSignIn,
 }: CreateButtonProps) {
   const navigate = useNavigate();
 
-  // handle button click, including sign-in and Stripe onboarding
   const handleClick = async () => {
+    // If user is not signed in, trigger sign-in
     if (!isSignedIn) {
       if (loadingSignIn) return;
       setLoadingSignIn(true);
@@ -34,16 +34,12 @@ export default function CreateButton({
       }
       return;
     }
-    if (!canPublishPaid) {
-      openStripeDialog();
-      return;
-    }
+
+    // Signed in → always allow going to Create page
     navigate("/create");
   };
 
-  const buttonTitle = isSignedIn && !canPublishPaid
-      ? "Finish Stripe onboarding to create a course"
-      : undefined;
+  const buttonTitle = !isSignedIn ? "Sign in to create a course" : "Create a course";
 
   return (
     <Button
@@ -51,7 +47,8 @@ export default function CreateButton({
       color="primary"
       onClick={handleClick}
       disabled={loadingSignIn}
-      title={buttonTitle}>
+      title={buttonTitle}
+    >
       Create
     </Button>
   );
