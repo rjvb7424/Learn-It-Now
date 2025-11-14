@@ -5,24 +5,33 @@ import { useNavigate } from "react-router-dom";
 // internal imports
 import { SignIn } from "../../../firebase/SignIn";
 
-type Props = {
+type CreateButtonProps = {
   isSignedIn: boolean;
-  canPublishPaid: boolean;          // stripeAccountId && stripeOnboarded
+  canPublishPaid: boolean;
   openStripeDialog: () => void;
   loadingSignIn: boolean;
-  setLoadingSignIn: (b: boolean) => void;
+  setLoadingSignIn: (loading: boolean) => void;
 };
 
 export default function CreateButton({
-  isSignedIn, canPublishPaid, openStripeDialog, loadingSignIn, setLoadingSignIn,
-}: Props) {
+  isSignedIn,
+  canPublishPaid,
+  openStripeDialog,
+  loadingSignIn,
+  setLoadingSignIn,
+}: CreateButtonProps) {
   const navigate = useNavigate();
 
+  // handle button click, including sign-in and Stripe onboarding
   const handleClick = async () => {
     if (!isSignedIn) {
       if (loadingSignIn) return;
       setLoadingSignIn(true);
-      try { await SignIn(); } finally { setLoadingSignIn(false); }
+      try {
+        await SignIn();
+      } finally {
+        setLoadingSignIn(false);
+      }
       return;
     }
     if (!canPublishPaid) {
@@ -32,13 +41,17 @@ export default function CreateButton({
     navigate("/create");
   };
 
+  const buttonTitle = isSignedIn && !canPublishPaid
+      ? "Finish Stripe onboarding to create a course"
+      : undefined;
+
   return (
     <Button
       variant="outlined"
       color="primary"
       onClick={handleClick}
-      title={!canPublishPaid && isSignedIn ? "Finish Stripe onboarding to create a course" : undefined}
-    >
+      disabled={loadingSignIn}
+      title={buttonTitle}>
       Create
     </Button>
   );
